@@ -4,7 +4,7 @@ import {
   Settings, LogOut, Zap, ChevronRight,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { User } from '@/types';
+import type { User } from '@/types';
 import { cn, getDaysLeft } from '@/lib/utils';
 import toast from 'react-hot-toast';
 

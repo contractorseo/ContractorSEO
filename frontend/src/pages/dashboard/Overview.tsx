@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { User, Business, Keyword, Review, Post } from '@/types';
+import type { User, Business, Keyword, Review, Post } from '@/types';
 import { getDaysLeft, formatDate } from '@/lib/utils';
 import api from '@/lib/api';
 import { TrendingUp, Star, FileText, MapPin, AlertCircle, ArrowUpRight } from 'lucide-react';

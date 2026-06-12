@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
-import { User, Business, Review, ReviewRequest } from '@/types';
+import type { User, Business, Review, ReviewRequest } from '@/types';
 import { formatDate } from '@/lib/utils';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';

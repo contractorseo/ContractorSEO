@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
-import { User, Business, PLAN_FEATURES } from '@/types';
+import type { User, Business, PLAN_FEATURES } from '@/types';
 import { getDaysLeft, formatDate } from '@/lib/utils';
 import api from '@/lib/api';
 import { supabase } from '@/lib/supabase';
