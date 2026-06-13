@@ -8,7 +8,6 @@ import { getDaysLeft, formatDate } from '@/lib/utils';
 import api from '@/lib/api';
 import { TrendingUp, Star, FileText, MapPin, AlertCircle, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface Context { user: User; business: Business }
 
@@ -71,11 +70,11 @@ export function Overview() {
       api.get(`/reviews/${business.id}`),
       api.get(`/keywords/${business.id}`),
     ]).then(([p, r, k]) => {
-      setPosts(p.data ?? []);
-      setReviews(r.data ?? []);
-      setKeywords(k.data ?? []);
+      setPosts(Array.isArray(p.data) ? p.data : []);
+      setReviews(Array.isArray(r.data) ? r.data : []);
+      setKeywords(Array.isArray(k.data) ? k.data : []);
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, [business]);
 
   const seo = computeSEOScore(posts, reviews, keywords);

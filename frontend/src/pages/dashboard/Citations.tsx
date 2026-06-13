@@ -47,15 +47,15 @@ export function Citations() {
 
   useEffect(() => {
     api.get(`/citations/${business.id}`).then(async (r) => {
-      const rows = r.data ?? [];
+      const rows = Array.isArray(r.data) ? r.data : [];
       if (rows.length === 0) {
         const { data: seeded } = await api.post(`/citations/seed/${business.id}`);
-        setListings(seeded ?? []);
+        setListings(Array.isArray(seeded) ? seeded : []);
       } else {
         setListings(rows);
       }
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, [business.id]);
 
   async function updateStatus(id: string, status: NapListing['status'], issue?: string) {

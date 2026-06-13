@@ -27,7 +27,9 @@ export function Reviews() {
   const [requestForm, setRequestForm] = useState({ customerName: '', phone: '', jobType: '' });
 
   useEffect(() => {
-    api.get(`/reviews/${business.id}`).then((r) => { setReviews(r.data ?? []); setLoading(false); });
+    api.get(`/reviews/${business.id}`)
+      .then((r) => { setReviews(Array.isArray(r.data) ? r.data : []); setLoading(false); })
+      .catch(() => setLoading(false));
   }, [business.id]);
 
   const avgRating = reviews.length ? (reviews.reduce((a, r) => a + r.rating, 0) / reviews.length).toFixed(1) : '0.0';

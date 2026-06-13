@@ -102,7 +102,9 @@ export function Keywords() {
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    api.get(`/keywords/${business.id}`).then((r) => { setKeywords(r.data ?? []); setLoading(false); });
+    api.get(`/keywords/${business.id}`)
+      .then((r) => { setKeywords(Array.isArray(r.data) ? r.data : []); setLoading(false); })
+      .catch(() => setLoading(false));
   }, [business.id]);
 
   function handleRankSave(id: string, rank: number | null) {
@@ -136,7 +138,7 @@ export function Keywords() {
     setSuggesting(true);
     try {
       const { data } = await api.post('/keywords/suggest', { businessId: business.id });
-      setSuggestions(data.suggestions);
+      setSuggestions(data.suggestions ?? []);
     } catch {
       toast.error('Failed to get suggestions');
     } finally {

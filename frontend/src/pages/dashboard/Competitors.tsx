@@ -52,7 +52,9 @@ export function Competitors() {
   const [form, setForm] = useState(EMPTY_FORM);
 
   useEffect(() => {
-    api.get(`/competitors/${business.id}`).then((r) => { setCompetitors(r.data ?? []); setLoading(false); });
+    api.get(`/competitors/${business.id}`)
+      .then((r) => { setCompetitors(Array.isArray(r.data) ? r.data : []); setLoading(false); })
+      .catch(() => setLoading(false));
   }, [business.id]);
 
   function openAdd() { setForm(EMPTY_FORM); setEditTarget(null); setShowAdd(true); }
@@ -103,7 +105,7 @@ export function Competitors() {
     setAnalyzing(true);
     try {
       const { data } = await api.post(`/competitors/analyze/${business.id}`);
-      setInsights(data.insights);
+      setInsights(data.insights ?? []);
     } catch (err: any) {
       toast.error(err?.response?.data?.error ?? 'Analysis failed');
     } finally {
