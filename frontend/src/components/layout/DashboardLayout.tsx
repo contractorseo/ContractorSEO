@@ -5,7 +5,7 @@ import { useBusiness } from '@/hooks/useBusiness';
 
 export function DashboardLayout() {
   const { supabaseUser, profile, loading: authLoading } = useAuth();
-  const { business, loading: bizLoading } = useBusiness(supabaseUser?.id);
+  const { business, businesses, loading: bizLoading, switchBusiness, addBusiness } = useBusiness(supabaseUser?.id);
 
   if (authLoading || bizLoading) {
     return (
@@ -23,9 +23,14 @@ export function DashboardLayout() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar user={profile} businessName={business?.name} />
+      <Sidebar
+        user={profile}
+        business={business}
+        businesses={businesses}
+        onSwitchBusiness={switchBusiness}
+      />
       <main className="flex-1 overflow-auto">
-        <Outlet context={{ user: profile, business }} />
+        <Outlet context={{ user: profile, business, businesses, switchBusiness, addBusiness }} />
       </main>
     </div>
   );

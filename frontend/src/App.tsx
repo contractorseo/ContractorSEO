@@ -13,6 +13,8 @@ import { Keywords } from '@/pages/dashboard/Keywords';
 import { Competitors } from '@/pages/dashboard/Competitors';
 import { Citations } from '@/pages/dashboard/Citations';
 import { Settings } from '@/pages/dashboard/Settings';
+import { Report } from '@/pages/dashboard/Report';
+import { PublicReport } from '@/pages/public/PublicReport';
 
 export default function App() {
   return (
@@ -33,8 +35,10 @@ export default function App() {
           <Route path="competitors" element={<Competitors />} />
           <Route path="citations" element={<Citations />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="report" element={<Report />} />
         </Route>
 
+        <Route path="/report/:token" element={<PublicReport />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>

@@ -91,6 +91,19 @@ export interface NapListing {
   updated_at: string;
 }
 
+export interface ReportData {
+  business: { name: string; city: string; state: string; category: string } | null;
+  napScore: number;
+  napListings: number;
+  napConsistent: number;
+  keywordCount: number;
+  top10Keywords: { keyword: string; current_rank: number | null; monthly_volume: number | null }[];
+  postsLast30Days: number;
+  reviewCount: number;
+  avgRating: number;
+  generatedAt: string;
+}
+
 export type Plan = 'trial' | 'growth' | 'agency';
 
 export interface PlanFeatures {
