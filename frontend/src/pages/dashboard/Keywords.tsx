@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
@@ -9,22 +9,83 @@ import { User, Business, Keyword } from '@/types';
 import { getRankChange } from '@/lib/utils';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Plus, Sparkles, TrendingUp, TrendingDown, Minus, Search, Trash2 } from 'lucide-react';
+import { Plus, Sparkles, TrendingUp, TrendingDown, Minus, Search, Trash2, Pencil, Check, X } from 'lucide-react';
 
 interface Context { user: User; business: Business }
 
 function RankBadge({ current, previous }: { current: number | null; previous: number | null }) {
   const change = getRankChange(current, previous);
   if (current === null) return <Badge variant="gray">Unranked</Badge>;
-
   return (
     <div className="flex items-center gap-1.5">
       <span className={`font-bold text-lg ${current <= 3 ? 'text-green-600' : current <= 10 ? 'text-brand-600' : 'text-gray-500'}`}>
         #{current}
       </span>
-      {change === 'up' && <TrendingUp size={14} className="text-green-500" />}
-      {change === 'down' && <TrendingDown size={14} className="text-red-500" />}
-      {change === 'same' && <Minus size={14} className="text-gray-400" />}
+      {change === 'up'   && <TrendingUp   size={14} className="text-green-500" />}
+      {change === 'down' && <TrendingDown size={14} className="text-red-500"   />}
+      {change === 'same' && <Minus        size={14} className="text-gray-400"  />}
+    </div>
+  );
+}
+
+function RankEditor({ keyword, onSave }: { keyword: Keyword; onSave: (id: string, rank: number | null) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(keyword.current_rank?.toString() ?? '');
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function startEdit() {
+    setValue(keyword.current_rank?.toString() ?? '');
+    setEditing(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }
+
+  async function save() {
+    const rank = value.trim() === '' ? null : parseInt(value, 10);
+    if (value.trim() !== '' && (isNaN(rank!) || rank! < 1 || rank! > 200)) {
+      toast.error('Rank must be 1–200'); return;
+    }
+    setSaving(true);
+    try {
+      await api.put(`/keywords/${keyword.id}/rank`, { current_rank: rank });
+      onSave(keyword.id, rank);
+      setEditing(false);
+    } catch {
+      toast.error('Failed to update rank');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function cancel() { setEditing(false); setValue(keyword.current_rank?.toString() ?? ''); }
+
+  if (!editing) {
+    return (
+      <div className="flex items-center gap-2 group">
+        <RankBadge current={keyword.current_rank} previous={keyword.previous_rank} />
+        <button onClick={startEdit} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-brand-600">
+          <Pencil size={12} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') cancel(); }}
+        placeholder="1–200"
+        className="w-16 px-2 py-1 text-sm border border-brand-400 rounded focus:outline-none focus:ring-2 focus:ring-brand-500"
+      />
+      <button onClick={save} disabled={saving} className="p-1 text-green-600 hover:text-green-700 disabled:opacity-50">
+        <Check size={14} />
+      </button>
+      <button onClick={cancel} className="p-1 text-gray-400 hover:text-gray-600">
+        <X size={14} />
+      </button>
     </div>
   );
 }
@@ -43,6 +104,17 @@ export function Keywords() {
   useEffect(() => {
     api.get(`/keywords/${business.id}`).then((r) => { setKeywords(r.data); setLoading(false); });
   }, [business.id]);
+
+  function handleRankSave(id: string, rank: number | null) {
+    setKeywords((kws) =>
+      kws.map((kw) =>
+        kw.id === id
+          ? { ...kw, previous_rank: kw.current_rank, current_rank: rank }
+          : kw
+      )
+    );
+    toast.success('Rank updated');
+  }
 
   async function handleAdd() {
     if (!newKeyword.trim()) return;
@@ -73,21 +145,30 @@ export function Keywords() {
   }
 
   async function addSuggestion(kw: string) {
-    const { data } = await api.post(`/keywords/${business.id}`, { keyword: kw });
-    setKeywords((k) => [...k, data]);
-    setSuggestions((s) => s.filter((x) => x !== kw));
-    toast.success(`Added: ${kw}`);
+    try {
+      const { data } = await api.post(`/keywords/${business.id}`, { keyword: kw });
+      setKeywords((k) => [...k, data]);
+      setSuggestions((s) => s.filter((x) => x !== kw));
+      toast.success(`Added: ${kw}`);
+    } catch {
+      toast.error('Failed to add keyword');
+    }
   }
 
   async function handleDelete(id: string) {
-    await api.delete(`/keywords/${id}`);
-    setKeywords((k) => k.filter((kw) => kw.id !== id));
-    toast.success('Removed');
+    try {
+      await api.delete(`/keywords/${id}`);
+      setKeywords((k) => k.filter((kw) => kw.id !== id));
+      toast.success('Removed');
+    } catch {
+      toast.error('Failed to remove keyword');
+    }
   }
 
-  const top10 = keywords.filter((k) => k.current_rank !== null && k.current_rank <= 10).length;
-  const avgRank = keywords.filter((k) => k.current_rank !== null).length
-    ? Math.round(keywords.filter((k) => k.current_rank !== null).reduce((a, k) => a + k.current_rank!, 0) / keywords.filter((k) => k.current_rank !== null).length)
+  const top10  = keywords.filter((k) => k.current_rank !== null && k.current_rank <= 10).length;
+  const ranked = keywords.filter((k) => k.current_rank !== null);
+  const avgRank = ranked.length
+    ? Math.round(ranked.reduce((a, k) => a + k.current_rank!, 0) / ranked.length)
     : null;
 
   return (
@@ -114,13 +195,12 @@ export function Keywords() {
       </div>
 
       <Card padding="none">
-        <div className="px-4 py-3 border-b border-gray-100">
-          <div className="grid grid-cols-12 text-xs font-medium text-gray-500 uppercase tracking-wide">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <div className="grid grid-cols-12 flex-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
             <div className="col-span-5">Keyword</div>
-            <div className="col-span-2 text-center">Current</div>
+            <div className="col-span-3">Current rank</div>
             <div className="col-span-2 text-center">Previous</div>
-            <div className="col-span-2 text-center">Volume</div>
-            <div className="col-span-1" />
+            <div className="col-span-2" />
           </div>
         </div>
 
@@ -142,16 +222,13 @@ export function Keywords() {
                 <div className="col-span-5">
                   <p className="text-sm font-medium text-gray-900">{kw.keyword}</p>
                 </div>
-                <div className="col-span-2 flex justify-center">
-                  <RankBadge current={kw.current_rank} previous={kw.previous_rank} />
+                <div className="col-span-3">
+                  <RankEditor keyword={kw} onSave={handleRankSave} />
                 </div>
                 <div className="col-span-2 text-center text-sm text-gray-400">
                   {kw.previous_rank ? `#${kw.previous_rank}` : '—'}
                 </div>
-                <div className="col-span-2 text-center text-sm text-gray-500">
-                  {kw.monthly_volume ? kw.monthly_volume.toLocaleString() : '—'}
-                </div>
-                <div className="col-span-1 flex justify-end">
+                <div className="col-span-2 flex justify-end">
                   <button onClick={() => handleDelete(kw.id)} className="p-1 text-gray-300 hover:text-red-500 transition-colors">
                     <Trash2 size={14} />
                   </button>
@@ -162,9 +239,22 @@ export function Keywords() {
         )}
       </Card>
 
+      {keywords.length > 0 && (
+        <p className="text-xs text-gray-400 text-center">
+          Hover a keyword row and click the pencil icon to update its rank. Enter 1–200 or leave blank for unranked.
+        </p>
+      )}
+
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add Keyword">
         <div className="space-y-4">
-          <Input label="Keyword" value={newKeyword} onChange={(e) => setNewKeyword(e.target.value)} placeholder="e.g. electrician Dallas TX" onKeyDown={(e) => e.key === 'Enter' && handleAdd()} autoFocus />
+          <Input
+            label="Keyword"
+            value={newKeyword}
+            onChange={(e) => setNewKeyword(e.target.value)}
+            placeholder="e.g. electrician Dallas TX"
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            autoFocus
+          />
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
             <Button onClick={handleAdd} loading={adding} disabled={!newKeyword.trim()}>Add keyword</Button>
@@ -180,16 +270,17 @@ export function Keywords() {
           </div>
         ) : (
           <div className="space-y-2 max-h-80 overflow-y-auto">
-            {suggestions.map((kw) => {
+            {suggestions.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-4">No suggestions available</p>
+            ) : suggestions.map((kw) => {
               const alreadyTracked = keywords.some((k) => k.keyword.toLowerCase() === kw.toLowerCase());
               return (
                 <div key={kw} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-brand-200 hover:bg-brand-50 transition-colors">
                   <span className="text-sm text-gray-800">{kw}</span>
-                  {alreadyTracked ? (
-                    <Badge variant="gray">Tracked</Badge>
-                  ) : (
-                    <Button size="sm" variant="secondary" onClick={() => addSuggestion(kw)}><Plus size={13} /> Add</Button>
-                  )}
+                  {alreadyTracked
+                    ? <Badge variant="gray">Tracked</Badge>
+                    : <Button size="sm" variant="secondary" onClick={() => addSuggestion(kw)}><Plus size={13} /> Add</Button>
+                  }
                 </div>
               );
             })}
