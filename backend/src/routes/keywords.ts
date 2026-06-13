@@ -75,7 +75,7 @@ router.post('/:businessId', requireAuth, async (req: Request, res: Response) => 
 
 router.put('/:id/rank', requireAuth, async (req: Request, res: Response) => {
   const { current_rank } = req.body;
-  if (typeof current_rank !== 'number') return res.status(400).json({ error: 'current_rank must be a number' });
+  if (current_rank !== null && typeof current_rank !== 'number') return res.status(400).json({ error: 'current_rank must be a number or null' });
 
   const { data: existing } = await supabase.from('keywords').select('current_rank').eq('id', req.params.id).single();
 
