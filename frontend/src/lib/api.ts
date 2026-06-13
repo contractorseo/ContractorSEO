@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { supabase } from './supabase';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? '/api',
+  baseURL: (import.meta.env.VITE_API_URL ?? '/api').replace(/^﻿/, ''),
 });
 
 api.interceptors.request.use(async (config) => {
