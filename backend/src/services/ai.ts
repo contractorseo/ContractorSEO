@@ -30,7 +30,7 @@ Requirements:
 Respond in JSON: { "title": "...", "content": "..." }`;
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5',
     max_tokens: 600,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -70,7 +70,7 @@ Requirements:
 Return only the response text, no extra commentary.`;
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5',
     max_tokens: 200,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -123,7 +123,7 @@ Respond in JSON array:
 ]`;
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5',
     max_tokens: 800,
     messages: [{ role: 'user', content: prompt }],
   });
@@ -157,7 +157,7 @@ Focus on:
 Return JSON array of 20 keyword strings only.`;
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5',
     max_tokens: 400,
     messages: [{ role: 'user', content: prompt }],
   });
