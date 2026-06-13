@@ -15,6 +15,7 @@ const BusinessSchema = z.object({
   phone: z.string().min(10),
   website: z.string().url().optional().or(z.literal('')),
   license_number: z.string().optional(),
+  google_place_id: z.string().optional(),
 });
 
 router.get('/', requireAuth, async (req: Request, res: Response) => {

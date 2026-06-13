@@ -20,6 +20,7 @@ export interface Business {
   phone: string;
   website: string | null;
   license_number: string | null;
+  google_place_id: string | null;
   gbp_connected: boolean;
   gbp_location_name: string | null;
   created_at: string;

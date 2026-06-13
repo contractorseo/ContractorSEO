@@ -266,6 +266,25 @@ export function Settings() {
           <Input label="Address" value={bizForm.address} onChange={(e) => setBizForm((f) => ({ ...f, address: e.target.value }))} className="md:col-span-2" />
           <Input label="City" value={bizForm.city} onChange={(e) => setBizForm((f) => ({ ...f, city: e.target.value }))} />
           <Input label="ZIP" value={bizForm.zip} onChange={(e) => setBizForm((f) => ({ ...f, zip: e.target.value }))} />
+          <div className="md:col-span-2">
+            <Input
+              label="Google Place ID"
+              value={bizForm.google_place_id ?? ''}
+              onChange={(e) => setBizForm((f) => ({ ...f, google_place_id: e.target.value }))}
+              placeholder="e.g. ChIJN1t_tDeuEmsRUsoyG83frY4"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Used to generate your review request link.{' '}
+              <a
+                href="https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-600 hover:underline"
+              >
+                Find your Place ID
+              </a>
+            </p>
+          </div>
         </div>
         <div className="flex justify-end mt-4">
           <Button onClick={handleSaveBusiness} loading={savingBiz}>Save changes</Button>

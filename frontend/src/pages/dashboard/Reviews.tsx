@@ -47,7 +47,9 @@ export function Reviews() {
         customerName: requestForm.customerName,
         phone: requestForm.phone.replace(/\D/g, '').replace(/^(\d{3})(\d{3})(\d{4})$/, '+1$1$2$3'),
         jobType: requestForm.jobType,
-        reviewLink: `https://g.page/r/${business.id}/review`,
+        reviewLink: business.google_place_id
+          ? `https://search.google.com/local/writereview?placeid=${business.google_place_id}`
+          : `https://www.google.com/search?q=${encodeURIComponent(business.name + ' ' + business.city + ' ' + business.state)}`,
       });
       toast.success(`Review request sent to ${requestForm.customerName}!`);
       setShowRequest(false);
