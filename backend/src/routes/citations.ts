@@ -32,7 +32,7 @@ router.post('/seed/:businessId', requireAuth, async (req: Request, res: Response
 
   const { data, error } = await supabase
     .from('nap_listings')
-    .upsert(listings, { onConflict: 'business_id,directory_name' })
+    .upsert(listings, { onConflict: 'business_id,directory_name', ignoreDuplicates: true })
     .select();
 
   if (error) return res.status(500).json({ error: error.message });
