@@ -47,11 +47,12 @@ export function Citations() {
 
   useEffect(() => {
     api.get(`/citations/${business.id}`).then(async (r) => {
-      if (r.data.length === 0) {
+      const rows = r.data ?? [];
+      if (rows.length === 0) {
         const { data: seeded } = await api.post(`/citations/seed/${business.id}`);
-        setListings(seeded);
+        setListings(seeded ?? []);
       } else {
-        setListings(r.data);
+        setListings(rows);
       }
       setLoading(false);
     });

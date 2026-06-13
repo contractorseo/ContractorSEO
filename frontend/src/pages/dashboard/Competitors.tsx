@@ -52,7 +52,7 @@ export function Competitors() {
   const [form, setForm] = useState(EMPTY_FORM);
 
   useEffect(() => {
-    api.get(`/competitors/${business.id}`).then((r) => { setCompetitors(r.data); setLoading(false); });
+    api.get(`/competitors/${business.id}`).then((r) => { setCompetitors(r.data ?? []); setLoading(false); });
   }, [business.id]);
 
   function openAdd() { setForm(EMPTY_FORM); setEditTarget(null); setShowAdd(true); }

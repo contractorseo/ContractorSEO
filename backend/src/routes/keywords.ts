@@ -14,7 +14,7 @@ router.get('/:businessId', requireAuth, async (req: Request, res: Response) => {
     .order('current_rank', { ascending: true });
 
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  res.json(data ?? []);
 });
 
 router.post('/suggest', requireAuth, async (req: Request, res: Response) => {

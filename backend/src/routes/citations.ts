@@ -19,7 +19,7 @@ router.get('/:businessId', requireAuth, async (req: Request, res: Response) => {
     .order('directory_name');
 
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  res.json(data ?? []);
 });
 
 router.post('/seed/:businessId', requireAuth, async (req: Request, res: Response) => {

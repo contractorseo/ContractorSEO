@@ -24,7 +24,7 @@ router.get('/:businessId', requireAuth, async (req: Request, res: Response) => {
     .order('threat_level', { ascending: false });
 
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  res.json(data ?? []);
 });
 
 router.post('/', requireAuth, async (req: Request, res: Response) => {

@@ -16,7 +16,7 @@ router.get('/:businessId', requireAuth, async (req: Request, res: Response) => {
     .order('date', { ascending: false });
 
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  res.json(data ?? []);
 });
 
 router.post('/request', requireAuth, checkReviewRequestLimit, async (req: Request, res: Response) => {

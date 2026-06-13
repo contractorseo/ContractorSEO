@@ -102,7 +102,7 @@ export function Keywords() {
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    api.get(`/keywords/${business.id}`).then((r) => { setKeywords(r.data); setLoading(false); });
+    api.get(`/keywords/${business.id}`).then((r) => { setKeywords(r.data ?? []); setLoading(false); });
   }, [business.id]);
 
   function handleRankSave(id: string, rank: number | null) {

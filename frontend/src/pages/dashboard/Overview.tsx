@@ -71,9 +71,9 @@ export function Overview() {
       api.get(`/reviews/${business.id}`),
       api.get(`/keywords/${business.id}`),
     ]).then(([p, r, k]) => {
-      setPosts(p.data);
-      setReviews(r.data);
-      setKeywords(k.data);
+      setPosts(p.data ?? []);
+      setReviews(r.data ?? []);
+      setKeywords(k.data ?? []);
       setLoading(false);
     });
   }, [business]);
