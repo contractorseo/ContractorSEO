@@ -138,7 +138,7 @@ export function Keywords() {
     setSuggesting(true);
     try {
       const { data } = await api.post('/keywords/suggest', { businessId: business.id });
-      setSuggestions(data.suggestions ?? []);
+      setSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
     } catch {
       toast.error('Failed to get suggestions');
     } finally {

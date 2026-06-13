@@ -105,7 +105,7 @@ export function Competitors() {
     setAnalyzing(true);
     try {
       const { data } = await api.post(`/competitors/analyze/${business.id}`);
-      setInsights(data.insights ?? []);
+      setInsights(Array.isArray(data.insights) ? data.insights : []);
     } catch (err: any) {
       toast.error(err?.response?.data?.error ?? 'Analysis failed');
     } finally {

@@ -43,7 +43,9 @@ export function Posts() {
   });
 
   useEffect(() => {
-    api.get(`/posts/${business.id}`).then((r) => { setPosts(r.data ?? []); setLoading(false); });
+    api.get(`/posts/${business.id}`)
+      .then((r) => { setPosts(Array.isArray(r.data) ? r.data : []); setLoading(false); })
+      .catch(() => setLoading(false));
   }, [business.id]);
 
   async function handleGenerate() {
