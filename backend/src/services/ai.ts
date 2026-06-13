@@ -78,6 +78,61 @@ Return only the response text, no extra commentary.`;
   return message.content[0].type === 'text' ? message.content[0].text.trim() : '';
 }
 
+export interface CompetitorAnalysisOptions {
+  businessName: string;
+  category: string;
+  city: string;
+  competitors: Array<{
+    name: string;
+    monthly_posts: number;
+    review_count: number;
+    rating: number;
+    threat_level: string;
+  }>;
+}
+
+export interface CompetitorInsight {
+  headline: string;
+  detail: string;
+  action: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
+export async function analyzeCompetitors(opts: CompetitorAnalysisOptions): Promise<CompetitorInsight[]> {
+  const competitorSummary = opts.competitors
+    .map((c) => `- ${c.name}: ${c.review_count} reviews (${c.rating}★), ${c.monthly_posts} posts/mo, threat: ${c.threat_level}`)
+    .join('\n');
+
+  const prompt = `You are a local SEO strategist analyzing the competitive landscape for a contractor.
+
+Business: ${opts.businessName} (${opts.category} in ${opts.city})
+
+Competitors:
+${competitorSummary}
+
+Analyze this competitive landscape and return 4 specific, actionable insights. Each insight should identify a gap or opportunity based on the data.
+
+Respond in JSON array:
+[
+  {
+    "headline": "short title (5-8 words)",
+    "detail": "1-2 sentence explanation of what you see in the data",
+    "action": "specific thing the business should do this week",
+    "priority": "high" | "medium" | "low"
+  }
+]`;
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 800,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = message.content[0].type === 'text' ? message.content[0].text : '[]';
+  const jsonMatch = text.match(/\[[\s\S]*\]/);
+  return jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+}
+
 export interface SEOAuditOptions {
   businessName: string;
   category: string;
