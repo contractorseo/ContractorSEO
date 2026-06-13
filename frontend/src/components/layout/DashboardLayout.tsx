@@ -4,10 +4,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBusiness } from '@/hooks/useBusiness';
 
 export function DashboardLayout() {
-  const { supabaseUser, profile, loading } = useAuth();
-  const { business } = useBusiness(supabaseUser?.id);
+  const { supabaseUser, profile, loading: authLoading } = useAuth();
+  const { business, loading: bizLoading } = useBusiness(supabaseUser?.id);
 
-  if (loading) {
+  if (authLoading || bizLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full" />
