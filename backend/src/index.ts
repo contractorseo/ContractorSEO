@@ -41,6 +41,12 @@ app.use('/api/reports', reportsRouter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
+// Global error handler — catches anything thrown in route handlers
+app.use((err: Error, _req: import('express').Request, res: import('express').Response, _next: import('express').NextFunction) => {
+  console.error('[unhandled]', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
 app.listen(PORT, () => {
   console.log(`ContractorSEO API running on port ${PORT}`);
 });

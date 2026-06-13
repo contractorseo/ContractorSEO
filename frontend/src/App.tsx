@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Login } from '@/pages/auth/Login';
 import { Signup } from '@/pages/auth/Signup';
@@ -15,32 +16,35 @@ import { Citations } from '@/pages/dashboard/Citations';
 import { Settings } from '@/pages/dashboard/Settings';
 import { Report } from '@/pages/dashboard/Report';
 import { PublicReport } from '@/pages/public/PublicReport';
+import { NotFound } from '@/pages/NotFound';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Toaster position="top-right" toastOptions={{ duration: 3500 }} />
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/onboarding" element={<Onboarding />} />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Toaster position="top-right" toastOptions={{ duration: 3500 }} />
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/onboarding" element={<Onboarding />} />
 
-        <Route path="/dashboard" element={<DashboardLayout />}>
-          <Route index element={<Overview />} />
-          <Route path="posts" element={<Posts />} />
-          <Route path="reviews" element={<Reviews />} />
-          <Route path="keywords" element={<Keywords />} />
-          <Route path="competitors" element={<Competitors />} />
-          <Route path="citations" element={<Citations />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="report" element={<Report />} />
-        </Route>
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<Overview />} />
+            <Route path="posts" element={<Posts />} />
+            <Route path="reviews" element={<Reviews />} />
+            <Route path="keywords" element={<Keywords />} />
+            <Route path="competitors" element={<Competitors />} />
+            <Route path="citations" element={<Citations />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="report" element={<Report />} />
+          </Route>
 
-        <Route path="/report/:token" element={<PublicReport />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="/report/:token" element={<PublicReport />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
