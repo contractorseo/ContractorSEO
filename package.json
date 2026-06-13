@@ -7,6 +7,7 @@
     "dev:backend": "npm run dev --workspace=backend",
     "typecheck": "npm run typecheck --workspace=frontend && npm run typecheck --workspace=backend",
     "build:frontend": "npm run build --workspace=frontend",
-    "build:backend": "npm run build --workspace=backend"
+    "build:backend": "npm run build --workspace=backend",
+    "build": "cd backend && npm install && npm run build && cd .. && cp -r backend/dist dist"
   }
 }
