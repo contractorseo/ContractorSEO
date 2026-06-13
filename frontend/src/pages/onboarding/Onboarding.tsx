@@ -42,7 +42,8 @@ export function Onboarding() {
     setSaving(true);
     try {
       const { data: biz } = await api.post('/businesses', form);
-      await api.post(`/citations/seed/${biz.id}`);
+      // Seed citations in background — don't block navigation if it fails
+      api.post(`/citations/seed/${biz.id}`).catch(() => {});
       toast.success('Business set up! Welcome to ContractorSEO.');
       navigate('/dashboard');
     } catch {
