@@ -29,33 +29,71 @@ router.get('/callback', async (req: Request, res: Response) => {
   const { code, state: businessId, error } = req.query;
   const frontendBase = `${process.env.FRONTEND_URL}/dashboard/settings`;
 
+  console.log('[GBP callback] received', {
+    hasCode: !!code,
+    businessId,
+    error: error ?? null,
+    FRONTEND_URL: process.env.FRONTEND_URL ?? 'MISSING',
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ? 'set' : 'MISSING',
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ? 'set' : 'MISSING',
+    GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI ?? 'MISSING',
+  });
+
   if (error || !code || !businessId) {
+    console.error('[GBP callback] missing params', { error, hasCode: !!code, businessId });
     return res.redirect(`${frontendBase}?gbp=error&msg=${error ?? 'missing_params'}`);
   }
 
   try {
+    console.log('[GBP callback] step 1: exchanging code for tokens');
     const { access_token, refresh_token } = await exchangeCode(code as string);
+    console.log('[GBP callback] step 1 done', {
+      hasAccessToken: !!access_token,
+      hasRefreshToken: !!refresh_token,
+    });
+
+    console.log('[GBP callback] step 2: fetching GBP accounts');
     const accounts = await getAccounts(access_token);
+    console.log('[GBP callback] step 2 done', {
+      accountCount: accounts.length,
+      accounts: accounts.map((a) => ({ name: a.name, accountName: a.accountName, type: a.type })),
+    });
 
     if (!accounts.length) {
+      console.error('[GBP callback] no accounts found for this Google user');
       return res.redirect(`${frontendBase}?gbp=error&msg=no_accounts`);
     }
 
-    // Store the refresh token on the business row; let user pick location next
-    await supabase
+    console.log('[GBP callback] step 3: saving refresh token to DB for business', businessId);
+    const { error: dbError } = await supabase
       .from('businesses')
       .update({ gbp_refresh_token: refresh_token, gbp_account_name: accounts[0].name })
       .eq('id', businessId as string);
+    if (dbError) {
+      console.error('[GBP callback] step 3 DB error', { code: dbError.code, message: dbError.message, details: dbError.details });
+    } else {
+      console.log('[GBP callback] step 3 done: refresh token saved');
+    }
 
-    // Fetch locations for the first account so the frontend can show a picker
+    console.log('[GBP callback] step 4: fetching locations for account', accounts[0].name);
     const locations = await getLocations(access_token, accounts[0].name);
+    console.log('[GBP callback] step 4 done', {
+      locationCount: locations.length,
+      locations: locations.map((l) => ({ name: l.name, title: l.title })),
+    });
+
     const locationsParam = encodeURIComponent(JSON.stringify(
       locations.map((l) => ({ name: l.name, title: l.title }))
     ));
 
+    console.log('[GBP callback] success — redirecting to location picker');
     res.redirect(`${frontendBase}?gbp=select&locations=${locationsParam}`);
   } catch (err: any) {
-    console.error('[GBP callback]', err);
+    console.error('[GBP callback] uncaught error', {
+      message: err?.message,
+      stack: err?.stack,
+      name: err?.name,
+    });
     res.redirect(`${frontendBase}?gbp=error&msg=callback_failed`);
   }
 });

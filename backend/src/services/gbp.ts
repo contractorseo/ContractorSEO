@@ -65,7 +65,7 @@ export async function getAccounts(accessToken: string): Promise<GBPAccount[]> {
   const res = await fetch(ACCOUNTS_URL, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!res.ok) throw new Error('Failed to fetch GBP accounts');
+  if (!res.ok) throw new Error(`Failed to fetch GBP accounts: ${res.status} ${await res.text()}`);
   const data = await res.json() as { accounts?: GBPAccount[] };
   return data.accounts ?? [];
 }
@@ -81,7 +81,7 @@ export async function getLocations(accessToken: string, accountName: string): Pr
     `${LOCATIONS_BASE}/${accountName}/locations?readMask=name,title,storefrontAddress`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
-  if (!res.ok) throw new Error('Failed to fetch GBP locations');
+  if (!res.ok) throw new Error(`Failed to fetch GBP locations: ${res.status} ${await res.text()}`);
   const data = await res.json() as { locations?: GBPLocation[] };
   return data.locations ?? [];
 }
