@@ -1,17 +1,20 @@
-import { useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
-import type { User, Business, PLAN_FEATURES } from '@/types';
+import type { User, Business } from '@/types';
 import { getDaysLeft, formatDate } from '@/lib/utils';
 import api from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
-import { CreditCard, Building2, CheckCircle, Zap, Shield } from 'lucide-react';
+import { CreditCard, Building2, CheckCircle, Shield, MapPin, ExternalLink, Unlink } from 'lucide-react';
 
 interface Context { user: User; business: Business }
+
+interface GBPLocation { name: string; title: string }
 
 const PLANS = [
   {
@@ -33,10 +36,85 @@ const PLANS = [
 
 export function Settings() {
   const { user, business } = useOutletContext<Context>();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [bizForm, setBizForm] = useState({ ...business });
   const [savingBiz, setSavingBiz] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+
+  // GBP state
+  const [gbpConnected, setGbpConnected] = useState(business.gbp_connected);
+  const [gbpConnecting, setGbpConnecting] = useState(false);
+  const [gbpDisconnecting, setGbpDisconnecting] = useState(false);
+  const [locationModal, setLocationModal] = useState(false);
+  const [pendingLocations, setPendingLocations] = useState<GBPLocation[]>([]);
+  const [savingLocation, setSavingLocation] = useState<string | null>(null);
+
+  // Handle OAuth callback redirect params
+  useEffect(() => {
+    const gbpParam = searchParams.get('gbp');
+    if (!gbpParam) return;
+
+    if (gbpParam === 'select') {
+      try {
+        const locations: GBPLocation[] = JSON.parse(decodeURIComponent(searchParams.get('locations') ?? '[]'));
+        setPendingLocations(locations);
+        setLocationModal(true);
+      } catch {
+        toast.error('Failed to parse GBP locations');
+      }
+    } else if (gbpParam === 'connected') {
+      setGbpConnected(true);
+      toast.success('Google Business Profile connected!');
+    } else if (gbpParam === 'error') {
+      toast.error(`GBP error: ${searchParams.get('msg') ?? 'unknown'}`);
+    }
+
+    // Clear the query params
+    setSearchParams({}, { replace: true });
+  }, []);
+
+  async function handleConnectGBP() {
+    setGbpConnecting(true);
+    try {
+      const { data } = await api.get(`/gbp/auth-url?businessId=${business.id}`);
+      window.location.href = data.url;
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? 'Failed to start GBP connection');
+      setGbpConnecting(false);
+    }
+  }
+
+  async function handleSelectLocation(location: GBPLocation) {
+    setSavingLocation(location.name);
+    try {
+      await api.post(`/gbp/connect/${business.id}`, {
+        locationName: location.name,
+        locationTitle: location.title,
+      });
+      setGbpConnected(true);
+      setLocationModal(false);
+      toast.success(`Connected to "${location.title}"`);
+    } catch {
+      toast.error('Failed to save location');
+    } finally {
+      setSavingLocation(null);
+    }
+  }
+
+  async function handleDisconnectGBP() {
+    setGbpDisconnecting(true);
+    try {
+      await api.delete(`/gbp/disconnect/${business.id}`);
+      setGbpConnected(false);
+      toast.success('GBP disconnected');
+    } catch {
+      toast.error('Failed to disconnect');
+    } finally {
+      setGbpDisconnecting(false);
+    }
+  }
 
   async function handleSaveBusiness() {
     setSavingBiz(true);
@@ -79,11 +157,14 @@ export function Settings() {
     <div className="p-6 max-w-4xl mx-auto space-y-8">
       <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
 
+      {/* Subscription */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><CreditCard size={18} /> Subscription</CardTitle>
           <Badge variant={isActive ? 'success' : daysLeft > 0 ? 'warning' : 'danger'}>
-            {isActive ? user.plan.charAt(0).toUpperCase() + user.plan.slice(1) : daysLeft > 0 ? `Trial · ${daysLeft}d left` : 'Trial expired'}
+            {isActive
+              ? user.plan.charAt(0).toUpperCase() + user.plan.slice(1)
+              : daysLeft > 0 ? `Trial · ${daysLeft}d left` : 'Trial expired'}
           </Badge>
         </CardHeader>
 
@@ -116,8 +197,7 @@ export function Settings() {
                 <ul className="space-y-2 mb-5">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-center gap-2 text-sm text-gray-700">
-                      <CheckCircle size={14} className="text-green-500 shrink-0" />
-                      {f}
+                      <CheckCircle size={14} className="text-green-500 shrink-0" />{f}
                     </li>
                   ))}
                 </ul>
@@ -135,6 +215,45 @@ export function Settings() {
         )}
       </Card>
 
+      {/* Google Business Profile */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin size={18} /> Google Business Profile
+          </CardTitle>
+          <Badge variant={gbpConnected ? 'success' : 'gray'}>
+            {gbpConnected ? 'Connected' : 'Not connected'}
+          </Badge>
+        </CardHeader>
+
+        {gbpConnected ? (
+          <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
+            <div>
+              <p className="font-medium text-gray-900">GBP connected</p>
+              <p className="text-sm text-gray-500">Posts can be published directly to your Google listing</p>
+            </div>
+            <Button variant="outline" onClick={handleDisconnectGBP} loading={gbpDisconnecting}>
+              <Unlink size={14} /> Disconnect
+            </Button>
+          </div>
+        ) : (
+          <div className="p-4 bg-gray-50 rounded-xl space-y-3">
+            <p className="text-sm text-gray-600">
+              Connect your Google Business Profile to publish AI-generated posts directly to your listing and track your GBP performance.
+            </p>
+            <div className="flex items-center gap-3">
+              <Button onClick={handleConnectGBP} loading={gbpConnecting}>
+                <ExternalLink size={14} /> Connect Google Business Profile
+              </Button>
+            </div>
+            <p className="text-xs text-gray-400">
+              You'll be redirected to Google to authorize access. Requires a verified Google Business Profile listing.
+            </p>
+          </div>
+        )}
+      </Card>
+
+      {/* Business info */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Building2 size={18} /> Business info</CardTitle>
@@ -153,6 +272,7 @@ export function Settings() {
         </div>
       </Card>
 
+      {/* Account */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Shield size={18} /> Account</CardTitle>
@@ -172,6 +292,33 @@ export function Settings() {
           </div>
         </div>
       </Card>
+
+      {/* Location picker modal (shown after OAuth callback) */}
+      <Modal open={locationModal} onClose={() => setLocationModal(false)} title="Select Your Business Location" size="md">
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600">Choose which Google Business Profile location to connect:</p>
+          {pendingLocations.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-4">No locations found on this account.</p>
+          ) : (
+            pendingLocations.map((loc) => (
+              <button
+                key={loc.name}
+                onClick={() => handleSelectLocation(loc)}
+                disabled={!!savingLocation}
+                className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-gray-200 hover:border-brand-400 hover:bg-brand-50 transition-all text-left disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin size={16} className="text-brand-600 shrink-0" />
+                  <span className="font-medium text-gray-900 text-sm">{loc.title}</span>
+                </div>
+                {savingLocation === loc.name && (
+                  <div className="w-4 h-4 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
+                )}
+              </button>
+            ))
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -21,6 +21,7 @@ export interface Business {
   website: string | null;
   license_number: string | null;
   gbp_connected: boolean;
+  gbp_location_name: string | null;
   created_at: string;
 }
 
@@ -34,6 +35,7 @@ export interface Post {
   scheduled_for: string | null;
   status: 'draft' | 'scheduled' | 'published';
   published_at: string | null;
+  gbp_post_name: string | null;
   created_at: string;
 }
 

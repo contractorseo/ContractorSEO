@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
@@ -10,15 +10,15 @@ import type { User, Business, Post } from '@/types';
 import { formatDate } from '@/lib/utils';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Plus, Sparkles, FileText, Pencil, Trash2, Calendar } from 'lucide-react';
+import { Plus, Sparkles, FileText, Trash2, Calendar, MapPin, CheckCircle } from 'lucide-react';
 
 interface Context { user: User; business: Business }
 
 const POST_TYPES = [
   { value: 'update', label: 'Business Update' },
-  { value: 'offer', label: 'Offer / Promotion' },
-  { value: 'event', label: 'Event' },
-  { value: 'tip', label: 'Pro Tip' },
+  { value: 'offer',  label: 'Offer / Promotion' },
+  { value: 'event',  label: 'Event' },
+  { value: 'tip',    label: 'Pro Tip' },
 ];
 
 const STATUS_VARIANTS: Record<string, 'success' | 'info' | 'gray'> = {
@@ -32,6 +32,7 @@ export function Posts() {
   const [showCreate, setShowCreate] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [publishingGbp, setPublishingGbp] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     type: 'update' as Post['type'],
@@ -86,11 +87,34 @@ export function Posts() {
     }
   }
 
+  async function handlePublishGBP(post: Post) {
+    if (!business.gbp_connected) {
+      toast.error('Connect your Google Business Profile in Settings first');
+      return;
+    }
+    setPublishingGbp(post.id);
+    try {
+      await api.post(`/gbp/publish/${business.id}/${post.id}`);
+      setPosts((p) => p.map((x) =>
+        x.id === post.id ? { ...x, status: 'published', published_at: new Date().toISOString() } : x
+      ));
+      toast.success('Published to Google Business Profile!');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? 'Failed to publish to GBP');
+    } finally {
+      setPublishingGbp(null);
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm('Delete this post?')) return;
-    await api.delete(`/posts/${id}`);
-    setPosts((p) => p.filter((post) => post.id !== id));
-    toast.success('Post deleted');
+    try {
+      await api.delete(`/posts/${id}`);
+      setPosts((p) => p.filter((post) => post.id !== id));
+      toast.success('Post deleted');
+    } catch {
+      toast.error('Failed to delete post');
+    }
   }
 
   return (
@@ -100,9 +124,14 @@ export function Posts() {
           <h1 className="text-2xl font-bold text-gray-900">Content</h1>
           <p className="text-gray-500 text-sm mt-0.5">AI-generated Google Business Profile posts</p>
         </div>
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus size={16} /> New post
-        </Button>
+        <div className="flex items-center gap-2">
+          {!business.gbp_connected && (
+            <span className="text-xs text-gray-400 flex items-center gap-1">
+              <MapPin size={12} /> GBP not connected
+            </span>
+          )}
+          <Button onClick={() => setShowCreate(true)}><Plus size={16} /> New post</Button>
+        </div>
       </div>
 
       {loading ? (
@@ -122,9 +151,14 @@ export function Posts() {
             <Card key={post.id} padding="sm">
               <div className="flex items-start gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <Badge variant={STATUS_VARIANTS[post.status]}>{post.status}</Badge>
                     <Badge variant="gray">{post.type}</Badge>
+                    {post.gbp_post_name && (
+                      <Badge variant="success">
+                        <CheckCircle size={11} className="mr-0.5" /> On GBP
+                      </Badge>
+                    )}
                     {post.scheduled_for && (
                       <span className="flex items-center gap-1 text-xs text-gray-500">
                         <Calendar size={12} /> {formatDate(post.scheduled_for)}
@@ -134,8 +168,21 @@ export function Posts() {
                   <h3 className="font-semibold text-gray-900 text-sm mb-0.5">{post.title}</h3>
                   <p className="text-sm text-gray-500 line-clamp-2">{post.content}</p>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <button onClick={() => handleDelete(post.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                <div className="flex gap-1.5 shrink-0">
+                  {!post.gbp_post_name && business.gbp_connected && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handlePublishGBP(post)}
+                      loading={publishingGbp === post.id}
+                    >
+                      <MapPin size={13} /> Post to GBP
+                    </Button>
+                  )}
+                  <button
+                    onClick={() => handleDelete(post.id)}
+                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  >
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -196,7 +243,7 @@ export function Posts() {
           <div className="flex gap-3 justify-end pt-2">
             <Button variant="outline" onClick={() => handleSave('draft')} loading={saving}>Save draft</Button>
             <Button onClick={() => handleSave('scheduled')} loading={saving}>
-              {form.scheduled_for ? 'Schedule' : 'Publish'}
+              {form.scheduled_for ? 'Schedule' : 'Save'}
             </Button>
           </div>
         </div>
