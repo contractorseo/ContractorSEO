@@ -10,7 +10,7 @@ import { User, Business, Competitor } from '@/types';
 import { formatDate } from '@/lib/utils';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { Plus, Users, Star, Trash2, AlertTriangle, Sparkles, Pencil, TrendingUp, Shield, Zap } from 'lucide-react';
+import { Plus, Users, Star, Trash2, AlertTriangle, Sparkles, Pencil, TrendingUp, Shield, Zap, Search, Check } from 'lucide-react';
 
 interface Context { user: User; business: Business }
 
@@ -40,6 +40,15 @@ const EMPTY_FORM = {
   threat_level: 'medium' as Competitor['threat_level'],
 };
 
+interface DiscoverResult {
+  name: string;
+  rating: number;
+  review_count: number;
+  vicinity: string;
+  place_id: string;
+  threat_level: Competitor['threat_level'];
+}
+
 export function Competitors() {
   const { business } = useOutletContext<Context>();
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
@@ -50,6 +59,11 @@ export function Competitors() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [showDiscover, setShowDiscover] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
+  const [discovered, setDiscovered] = useState<DiscoverResult[]>([]);
+  const [adding, setAdding] = useState<string | null>(null);
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     api.get(`/competitors/${business.id}`)
@@ -101,6 +115,44 @@ export function Competitors() {
     }
   }
 
+  async function handleDiscover() {
+    setDiscovering(true);
+    setShowDiscover(true);
+    setDiscovered([]);
+    setAddedIds(new Set());
+    try {
+      const { data } = await api.get(`/competitors/discover/${business.id}`);
+      setDiscovered(Array.isArray(data) ? data : []);
+      if (!data.length) toast('No competitors found nearby', { icon: '🔍' });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? 'Discovery failed');
+      setShowDiscover(false);
+    } finally {
+      setDiscovering(false);
+    }
+  }
+
+  async function handleAddDiscovered(place: DiscoverResult) {
+    setAdding(place.place_id);
+    try {
+      const { data } = await api.post('/competitors', {
+        business_id: business.id,
+        name: place.name,
+        rating: place.rating,
+        review_count: place.review_count,
+        monthly_posts: 0,
+        threat_level: place.threat_level,
+      });
+      setCompetitors((c) => [...c, data]);
+      setAddedIds((s) => new Set(s).add(place.place_id));
+      toast.success(`${place.name} added`);
+    } catch {
+      toast.error('Failed to add');
+    } finally {
+      setAdding(null);
+    }
+  }
+
   async function handleAnalyze() {
     setAnalyzing(true);
     try {
@@ -131,6 +183,9 @@ export function Competitors() {
               <Sparkles size={15} /> AI analysis
             </Button>
           )}
+          <Button variant="secondary" onClick={handleDiscover} loading={discovering}>
+            <Search size={15} /> Discover
+          </Button>
           <Button onClick={openAdd}><Plus size={15} /> Add competitor</Button>
         </div>
       </div>
@@ -229,6 +284,57 @@ export function Competitors() {
           ))
         )}
       </div>
+
+      <Modal open={showDiscover} onClose={() => setShowDiscover(false)} title="Discover Nearby Competitors" size="lg">
+        {discovering ? (
+          <div className="py-12 text-center text-gray-400">
+            <div className="w-8 h-8 border-2 border-brand-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            Searching Google Places for {business.category}s in {business.city}…
+          </div>
+        ) : discovered.length === 0 ? (
+          <p className="py-8 text-center text-gray-400">No competitors found.</p>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-gray-500 mb-3">
+              Found {discovered.length} {business.category}s near {business.city}. Add the ones you want to track.
+            </p>
+            {discovered.map((place) => {
+              const alreadyTracked = competitors.some(
+                (c) => c.name.toLowerCase() === place.name.toLowerCase()
+              );
+              const justAdded = addedIds.has(place.place_id);
+              const done = alreadyTracked || justAdded;
+              return (
+                <div key={place.place_id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-gray-200 bg-white">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900 text-sm truncate">{place.name}</p>
+                      <Badge variant={THREAT_VARIANTS[place.threat_level]}>{place.threat_level}</Badge>
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <span className="text-xs text-gray-500 flex items-center gap-0.5">
+                        <Star size={11} className="text-amber-400 fill-amber-400" /> {place.rating.toFixed(1)}
+                      </span>
+                      <span className="text-xs text-gray-500">{place.review_count.toLocaleString()} reviews</span>
+                      {place.vicinity && <span className="text-xs text-gray-400 truncate">{place.vicinity}</span>}
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={done ? 'secondary' : 'primary'}
+                    disabled={done}
+                    loading={adding === place.place_id}
+                    onClick={() => handleAddDiscovered(place)}
+                    className="ml-3 shrink-0"
+                  >
+                    {done ? <><Check size={13} /> Added</> : <><Plus size={13} /> Add</>}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Modal>
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title={editTarget ? 'Edit Competitor' : 'Add Competitor'}>
         <div className="space-y-4">

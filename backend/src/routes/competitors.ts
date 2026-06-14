@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { supabase } from '../lib/supabase';
 import { requireAuth } from '../middleware/auth';
 import { analyzeCompetitors } from '../services/ai';
+import { searchNearbyCompetitors } from '../services/places';
 import { z } from 'zod';
 
 const router = Router();
@@ -14,6 +15,31 @@ const CompetitorSchema = z.object({
   rating: z.number().min(0).max(5).default(0),
   last_post_date: z.string().datetime().optional().nullable(),
   threat_level: z.enum(['low', 'medium', 'high']).default('medium'),
+});
+
+router.get('/discover/:businessId', requireAuth, async (req: Request, res: Response) => {
+  if (!process.env.GOOGLE_PLACES_API_KEY) {
+    return res.status(503).json({ error: 'Places API not configured' });
+  }
+
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('name, category, city, state')
+    .eq('id', req.params.businessId)
+    .eq('user_id', req.user!.id)
+    .single();
+
+  if (!business) return res.status(404).json({ error: 'Business not found' });
+
+  try {
+    const results = await searchNearbyCompetitors(
+      business.category, business.city, business.state, business.name,
+    );
+    res.json(results);
+  } catch (err: any) {
+    console.error('[competitors/discover]', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.get('/:businessId', requireAuth, async (req: Request, res: Response) => {
