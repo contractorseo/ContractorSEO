@@ -110,18 +110,18 @@ export function Report() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">SEO Report</h1>
           <p className="text-gray-500 text-sm mt-0.5">{business.name} — {business.city}, {business.state}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {shareUrl ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <input
                 readOnly
                 value={shareUrl}
-                className="text-xs border border-gray-200 rounded-lg px-3 py-2 w-64 text-gray-600 bg-gray-50"
+                className="text-xs border border-gray-200 rounded-lg px-3 py-2 flex-1 sm:w-64 text-gray-600 bg-gray-50 min-w-0"
               />
               <Button size="sm" variant="secondary" onClick={copyLink}>
                 <Copy size={13} /> {copied ? 'Copied!' : 'Copy'}

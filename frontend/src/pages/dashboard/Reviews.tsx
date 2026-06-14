@@ -94,7 +94,7 @@ export function Reviews() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Reviews</h1>
           <p className="text-gray-500 text-sm mt-0.5">Manage and respond to customer reviews</p>
@@ -156,8 +156,8 @@ export function Reviews() {
             <Card key={review.id} padding="sm">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 shrink-0">
                       {review.reviewer_name[0]}
                     </div>
                     <span className="font-medium text-sm text-gray-900">{review.reviewer_name}</span>

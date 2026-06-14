@@ -121,12 +121,12 @@ export function Posts() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Content</h1>
           <p className="text-gray-500 text-sm mt-0.5">AI-generated Google Business Profile posts</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {!business.gbp_connected && (
             <span className="text-xs text-gray-400 flex items-center gap-1">
               <MapPin size={12} /> GBP not connected

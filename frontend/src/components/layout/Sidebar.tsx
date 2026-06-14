@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Star, Search, Users, MapPin,
   Settings, LogOut, Zap, ChevronRight, ChevronDown, Plus,
-  BarChart3, Building2,
+  BarChart3, Building2, X,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { User, Business } from '@/types';
@@ -26,9 +26,11 @@ interface SidebarProps {
   business: Business | null;
   businesses: Business[];
   onSwitchBusiness: (id: string) => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export function Sidebar({ user, business, businesses, onSwitchBusiness }: SidebarProps) {
+export function Sidebar({ user, business, businesses, onSwitchBusiness, isOpen, onClose }: SidebarProps) {
   const navigate = useNavigate();
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -44,15 +46,27 @@ export function Sidebar({ user, business, businesses, onSwitchBusiness }: Sideba
   }
 
   return (
-    <aside className="flex flex-col w-64 min-h-screen bg-gray-950 text-white">
+    <aside className={cn(
+      'fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-gray-950 text-white',
+      'transition-transform duration-200 ease-in-out',
+      'lg:static lg:inset-auto lg:z-auto lg:translate-x-0 lg:min-h-screen',
+      isOpen ? 'translate-x-0' : '-translate-x-full',
+    )}>
       {/* Logo */}
-      <div className="p-5 border-b border-gray-800">
+      <div className="p-5 border-b border-gray-800 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
             <Zap size={16} className="text-white" />
           </div>
           <p className="text-sm font-bold tracking-tight">ContractorSEO</p>
         </div>
+        <button
+          onClick={onClose}
+          className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 transition-colors"
+          aria-label="Close menu"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       {/* Business picker */}
@@ -120,6 +134,7 @@ export function Sidebar({ user, business, businesses, onSwitchBusiness }: Sideba
             key={to}
             to={to}
             end={end}
+            onClick={onClose}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors group',

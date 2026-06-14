@@ -172,12 +172,12 @@ export function Competitors() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Competitors</h1>
           <p className="text-gray-500 text-sm mt-0.5">Monitor who you're competing against in local search</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {competitors.length > 0 && (
             <Button variant="secondary" onClick={handleAnalyze} loading={analyzing}>
               <Sparkles size={15} /> AI analysis
@@ -190,10 +190,10 @@ export function Competitors() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card><p className="text-sm text-gray-500 mb-1">Tracking</p><p className="text-3xl font-bold text-gray-900">{competitors.length}</p></Card>
         <Card><p className="text-sm text-gray-500 mb-1">High threat</p><p className="text-3xl font-bold text-red-600">{highThreat}</p></Card>
-        <Card><p className="text-sm text-gray-500 mb-1">Avg comp rating</p><p className="text-3xl font-bold text-amber-600">{avgCompRating}</p></Card>
+        <Card><p className="text-sm text-gray-500 mb-1">Avg rating</p><p className="text-3xl font-bold text-amber-600">{avgCompRating}</p></Card>
       </div>
 
       {highThreat > 0 && (

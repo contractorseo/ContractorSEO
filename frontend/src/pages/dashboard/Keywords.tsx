@@ -175,12 +175,12 @@ export function Keywords() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Keywords</h1>
           <p className="text-gray-500 text-sm mt-0.5">Track your local search rankings</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => { setShowSuggest(true); handleGetSuggestions(); }}>
             <Sparkles size={15} /> AI suggestions
           </Button>
@@ -190,7 +190,7 @@ export function Keywords() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card><p className="text-sm text-gray-500 mb-1">Tracked</p><p className="text-3xl font-bold text-gray-900">{keywords.length}</p></Card>
         <Card><p className="text-sm text-gray-500 mb-1">Top 10</p><p className="text-3xl font-bold text-green-600">{top10}</p></Card>
         <Card><p className="text-sm text-gray-500 mb-1">Avg rank</p><p className="text-3xl font-bold text-brand-600">{avgRank ? `#${avgRank}` : '—'}</p></Card>
@@ -199,9 +199,9 @@ export function Keywords() {
       <Card padding="none">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
           <div className="grid grid-cols-12 flex-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
-            <div className="col-span-5">Keyword</div>
-            <div className="col-span-3">Current rank</div>
-            <div className="col-span-2 text-center">Previous</div>
+            <div className="col-span-6 sm:col-span-5">Keyword</div>
+            <div className="col-span-4 sm:col-span-3">Rank</div>
+            <div className="hidden sm:block sm:col-span-2 text-center">Previous</div>
             <div className="col-span-2" />
           </div>
         </div>
@@ -221,13 +221,13 @@ export function Keywords() {
           <div className="divide-y divide-gray-50">
             {keywords.map((kw) => (
               <div key={kw.id} className="grid grid-cols-12 items-center px-4 py-3 hover:bg-gray-50 transition-colors">
-                <div className="col-span-5">
-                  <p className="text-sm font-medium text-gray-900">{kw.keyword}</p>
+                <div className="col-span-6 sm:col-span-5">
+                  <p className="text-sm font-medium text-gray-900 truncate">{kw.keyword}</p>
                 </div>
-                <div className="col-span-3">
+                <div className="col-span-4 sm:col-span-3">
                   <RankEditor keyword={kw} onSave={handleRankSave} />
                 </div>
-                <div className="col-span-2 text-center text-sm text-gray-400">
+                <div className="hidden sm:block sm:col-span-2 text-center text-sm text-gray-400">
                   {kw.previous_rank ? `#${kw.previous_rank}` : '—'}
                 </div>
                 <div className="col-span-2 flex justify-end">
