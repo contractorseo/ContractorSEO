@@ -75,7 +75,7 @@ export function Posts() {
         type: form.type,
         title: form.title,
         content: form.content,
-        scheduled_for: form.scheduled_for || null,
+        scheduled_for: form.scheduled_for ? new Date(form.scheduled_for).toISOString() : null,
         status,
       });
       setPosts((p) => [data, ...p]);
