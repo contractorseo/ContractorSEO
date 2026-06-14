@@ -64,8 +64,15 @@ const PostSchema = z.object({
 });
 
 router.post('/', requireAuth, checkPostLimit, async (req: Request, res: Response) => {
+  console.log('[POST /posts] body:', JSON.stringify(req.body));
+
   const parsed = PostSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  if (!parsed.success) {
+    console.error('[POST /posts] validation failed:', JSON.stringify(parsed.error.flatten()));
+    return res.status(400).json({ error: parsed.error.flatten() });
+  }
+
+  console.log('[POST /posts] validated:', JSON.stringify(parsed.data));
 
   const { data, error } = await supabase
     .from('posts')
@@ -73,7 +80,12 @@ router.post('/', requireAuth, checkPostLimit, async (req: Request, res: Response
     .select()
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    console.error('[POST /posts] DB error:', { code: error.code, message: error.message, details: error.details, hint: error.hint });
+    return res.status(500).json({ error: error.message });
+  }
+
+  console.log('[POST /posts] created:', data?.id);
   res.status(201).json(data);
 });
 
