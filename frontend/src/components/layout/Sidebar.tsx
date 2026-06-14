@@ -49,8 +49,7 @@ export function Sidebar({ user, business, businesses, onSwitchBusiness, isOpen, 
     <aside className={cn(
       'fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-gray-950 text-white',
       'transition-transform duration-200 ease-in-out',
-      'lg:static lg:inset-auto lg:z-auto lg:translate-x-0 lg:min-h-screen',
-      isOpen ? 'translate-x-0' : '-translate-x-full',
+      isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
     )}>
       {/* Logo */}
       <div className="p-5 border-b border-gray-800 flex items-center justify-between">
