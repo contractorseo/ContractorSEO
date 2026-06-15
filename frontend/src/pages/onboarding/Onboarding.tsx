@@ -38,16 +38,37 @@ export function Onboarding() {
   const progress = ((step - 1) / (STEPS.length - 1)) * 100;
 
   async function handleFinish() {
-    if (!supabaseUser) return;
+    // Always get a fresh session so we don't silently fail on a stale supabaseUser
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id ?? supabaseUser?.id;
+    if (!userId) {
+      toast.error('Session expired — please sign in again.');
+      navigate('/login');
+      return;
+    }
+
     setSaving(true);
     try {
       const { data: biz } = await api.post('/businesses', form);
-      // Seed citations in background — don't block navigation if it fails
       api.post(`/citations/seed/${biz.id}`).catch(() => {});
       toast.success('Business set up! Welcome to ContractorSEO.');
+
+      // Poll until the new row is visible to the Supabase client before navigating.
+      // On slow mobile connections the DB write may not be readable yet, which causes
+      // DashboardLayout to see no business and redirect back to /onboarding (step 1).
+      for (let i = 0; i < 8; i++) {
+        await new Promise((r) => setTimeout(r, 400));
+        const { data } = await supabase.from('businesses').select('id').eq('user_id', userId).limit(1);
+        if (data && data.length > 0) break;
+      }
+
       navigate('/dashboard');
-    } catch {
-      toast.error('Something went wrong. Please try again.');
+    } catch (err: any) {
+      const msg =
+        err.response?.data?.error ??
+        (Array.isArray(err.response?.data?.details) ? err.response.data.details[0]?.message : null) ??
+        'Something went wrong. Please try again.';
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
