@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import api from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import toast from 'react-hot-toast';
@@ -35,16 +36,30 @@ export function Signup() {
     });
 
     if (error) { toast.error(error.message); setLoading(false); return; }
+    if (!data.user) { toast.error('Signup failed. Please try again.'); setLoading(false); return; }
 
-    if (data.user) {
-      await supabase.from('users').insert({
-        id: data.user.id,
-        email,
-        name,
-        plan: 'trial',
-        trial_ends_at: trialEndsAt,
-      });
+    // Supabase may require email confirmation before creating a session.
+    // Auto-confirm via the backend so the trial flow works without inbox verification.
+    if (!data.session) {
+      try {
+        await api.post('/auth/confirm-email', { userId: data.user.id });
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
+      } catch {
+        toast.error('Account created — please sign in to continue.');
+        navigate('/login');
+        setLoading(false);
+        return;
+      }
     }
+
+    await supabase.from('users').insert({
+      id: data.user.id,
+      email,
+      name,
+      plan: 'trial',
+      trial_ends_at: trialEndsAt,
+    });
 
     toast.success('Account created! Let\'s set up your business.');
     navigate('/onboarding');

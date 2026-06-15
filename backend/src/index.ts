@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 
+import authRouter from './routes/auth';
 import businessesRouter from './routes/businesses';
 import postsRouter from './routes/posts';
 import reviewsRouter from './routes/reviews';
@@ -29,6 +30,7 @@ app.use(express.json());
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
 app.use(limiter);
 
+app.use('/api/auth', authRouter);
 app.use('/api/businesses', businessesRouter);
 app.use('/api/posts', postsRouter);
 app.use('/api/reviews', reviewsRouter);
