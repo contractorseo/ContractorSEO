@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { Menu, Zap } from 'lucide-react';
 import { Sidebar } from './Sidebar';
@@ -7,20 +7,42 @@ import { useBusiness } from '@/hooks/useBusiness';
 
 export function DashboardLayout() {
   const { supabaseUser, profile, loading: authLoading } = useAuth();
-  const { business, businesses, loading: bizLoading, switchBusiness, addBusiness } = useBusiness(supabaseUser?.id);
+  const { business, businesses, loading: bizLoading, switchBusiness, addBusiness, refresh } = useBusiness(supabaseUser?.id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Tracks whether we've already attempted one re-fetch after finding no
+  // business. Prevents the redirect that happens on slow mobile connections
+  // when useBusiness hasn't yet observed the row created by handleFinish().
+  const [hasRefreshed, setHasRefreshed] = useState(false);
 
-  if (authLoading || bizLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    // When auth and business loading finish and there's still no business,
+    // do one automatic re-fetch before redirecting. This covers the race
+    // where navigate('/dashboard') fires before the Supabase write is visible
+    // to the subsequent read (common on slow mobile connections).
+    if (authLoading || bizLoading || business || hasRefreshed) return;
+    setHasRefreshed(true);
+    refresh();
+  }, [authLoading, bizLoading, business, hasRefreshed, refresh]);
 
+  useEffect(() => {
+    // Reset so the retry fires again if this user later has no businesses
+    // (e.g. after deleting their only business).
+    if (business) setHasRefreshed(false);
+  }, [business]);
+
+  const spinner = (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="animate-spin w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full" />
+    </div>
+  );
+
+  if (authLoading || bizLoading) return spinner;
   if (!supabaseUser || !profile) return <Navigate to="/login" replace />;
 
-  if (!business && window.location.pathname !== '/onboarding') {
+  if (!business) {
+    // Still waiting for the retry fetch to complete — keep showing spinner.
+    if (!hasRefreshed) return spinner;
+    // Retry done, still no business → user genuinely needs to onboard.
     return <Navigate to="/onboarding" replace />;
   }
 

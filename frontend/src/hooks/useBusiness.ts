@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Business } from '@/types';
 
@@ -50,5 +50,22 @@ export function useBusiness(userId: string | undefined) {
     switchBusiness(biz.id);
   }
 
-  return { business, businesses, loading, switchBusiness, addBusiness };
+  // Re-fetch businesses without requiring userId to change. Used by
+  // DashboardLayout to recover from the race where business=null after
+  // onboarding completes and navigates to /dashboard.
+  const refresh = useCallback(() => {
+    if (!userId) return;
+    setFetchedForId(undefined); // sets loading=true on next render
+    supabase
+      .from('businesses')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        setBusinesses(data ?? []);
+        setFetchedForId(userId);
+      });
+  }, [userId]);
+
+  return { business, businesses, loading, switchBusiness, addBusiness, refresh };
 }
