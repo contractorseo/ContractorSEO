@@ -23,6 +23,8 @@ export interface Business {
   google_place_id: string | null;
   gbp_connected: boolean;
   gbp_location_name: string | null;
+  auto_schedule: boolean;
+  auto_schedule_cadence: 'weekly' | 'biweekly' | 'monthly';
   created_at: string;
 }
 
