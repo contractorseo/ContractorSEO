@@ -6,16 +6,6 @@ import { z } from 'zod';
 
 const router = Router();
 
-// Temporary diagnostic
-router.get('/diag', (_req, res) => {
-  try {
-    const enc = encrypt('probe');
-    const dec = decrypt(enc);
-    res.json({ ok: dec === 'probe' });
-  } catch (err: any) {
-    res.json({ ok: false, error: err.message });
-  }
-});
 
 function basicAuthHeader(username: string, password: string) {
   return 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64');
