@@ -874,7 +874,7 @@ export function ContentStudio() {
       {/* Process-due note */}
       <p className="text-xs text-center text-gray-400">
         Scheduled articles auto-publish when you visit this page.{' '}
-        {process.env.NODE_ENV !== 'production' ? null : 'For 24/7 auto-publishing, set up an external cron to hit <code>GET /api/articles/process-due?secret=CRON_SECRET</code>.'}
+        For 24/7 auto-publishing, set up an external cron to hit <code>GET /api/articles/process-due?secret=CRON_SECRET</code>.
       </p>
     </div>
   );
