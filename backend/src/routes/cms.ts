@@ -6,17 +6,14 @@ import { z } from 'zod';
 
 const router = Router();
 
-// Temporary diagnostic — safe (exposes lengths only, not values)
+// Temporary diagnostic
 router.get('/diag', (_req, res) => {
-  const k = process.env.ENCRYPTION_KEY;
-  const hasSupa = !!process.env.SUPABASE_URL;
-  const hasAnthro = !!process.env.ANTHROPIC_API_KEY;
   try {
     const enc = encrypt('probe');
     const dec = decrypt(enc);
-    res.json({ ok: dec === 'probe', key_set: !!k, key_length: k?.length ?? 0, supabase_set: hasSupa, anthropic_set: hasAnthro });
+    res.json({ ok: dec === 'probe' });
   } catch (err: any) {
-    res.json({ ok: false, key_set: !!k, key_length: k?.length ?? 0, supabase_set: hasSupa, anthropic_set: hasAnthro, error: err.message });
+    res.json({ ok: false, error: err.message });
   }
 });
 

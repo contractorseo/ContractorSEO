@@ -1,13 +1,17 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 
 const ALGORITHM = 'aes-256-cbc';
 
 function getKey(): Buffer {
-  const key = process.env.ENCRYPTION_KEY;
-  if (!key || key.length !== 64) {
-    throw new Error('ENCRYPTION_KEY must be a 64-character hex string (32 bytes)');
+  // Prefer explicit ENCRYPTION_KEY if provided and valid
+  const explicit = process.env.ENCRYPTION_KEY;
+  if (explicit && explicit.length === 64) {
+    return Buffer.from(explicit, 'hex');
   }
-  return Buffer.from(key, 'hex');
+  // Derive from SUPABASE_SERVICE_ROLE_KEY (always present, already a secret)
+  const base = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!base) throw new Error('No encryption secret available');
+  return createHash('sha256').update('contractorseo-cms-v1:' + base).digest();
 }
 
 export function encrypt(text: string): string {
