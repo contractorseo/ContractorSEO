@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import api from '@/lib/api';
 import { User } from '@/types';
 
 interface AuthState {
@@ -45,12 +46,9 @@ export function useAuth() {
 }
 
 async function fetchProfile(userId: string): Promise<User | null> {
-  const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
   const [{ data }, ctxRes] = await Promise.all([
     supabase.from('users').select('*').eq('id', userId).single(),
-    fetch(`${apiBase}/api/auth/context`)
-      .then((r) => r.json() as Promise<{ betaMode: boolean }>)
-      .catch(() => ({ betaMode: false })),
+    api.get<{ betaMode: boolean }>('/api/auth/context').then((r) => r.data).catch(() => ({ betaMode: false })),
   ]);
   if (!data) return null;
   return ctxRes.betaMode ? { ...data, plan: 'agency' as const } : data;
