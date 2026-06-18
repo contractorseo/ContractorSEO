@@ -3,13 +3,15 @@ import { useOutletContext } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import type { User, Business, Article, ArticleTopic, ArticleUsage } from '@/types';
+import { Modal } from '@/components/ui/Modal';
+import type { User, Business, Article, ArticleTopic, ArticleUsage, CmsConnection } from '@/types';
 import { formatDate } from '@/lib/utils';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
   Sparkles, FileText, Trash2, ArrowLeft, Eye, Pencil,
-  Plus, ChevronRight, Lightbulb, BookOpen,
+  Plus, ChevronRight, Lightbulb, BookOpen, Copy, Download,
+  Globe, ExternalLink,
 } from 'lucide-react';
 
 interface Context { user: User; business: Business }
@@ -36,6 +38,16 @@ function wordCount(html: string) {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).length;
 }
 
+function downloadHtml(title: string, html: string) {
+  const blob = new Blob([`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${title}</title></head><body>${html}</body></html>`], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60)}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function ContentStudio() {
   const { business } = useOutletContext<Context>();
 
@@ -43,6 +55,7 @@ export function ContentStudio() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [usage, setUsage] = useState<ArticleUsage | null>(null);
   const [loadingList, setLoadingList] = useState(true);
+  const [cmsConnection, setCmsConnection] = useState<CmsConnection | null>(null);
 
   // Topics state
   const [topics, setTopics] = useState<ArticleTopic[]>([]);
@@ -54,13 +67,22 @@ export function ContentStudio() {
   const [saving, setSaving] = useState(false);
   const [editorTab, setEditorTab] = useState<'edit' | 'preview'>('edit');
 
+  // Publish modal state
+  const [publishModal, setPublishModal] = useState(false);
+  const [wpStatus, setWpStatus] = useState<'publish' | 'draft'>('publish');
+  const [publishing, setPublishing] = useState(false);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+
   useEffect(() => {
     Promise.all([
       api.get(`/articles/${business.id}`),
       api.get('/articles/usage'),
-    ]).then(([articlesRes, usageRes]) => {
+      api.get(`/cms/${business.id}`),
+    ]).then(([articlesRes, usageRes, cmsRes]) => {
       setArticles(Array.isArray(articlesRes.data) ? articlesRes.data : []);
       setUsage(usageRes.data);
+      const conns = Array.isArray(cmsRes.data) ? cmsRes.data : [];
+      setCmsConnection(conns.find((c: CmsConnection) => c.status === 'active') ?? null);
     }).catch(() => {
       toast.error('Failed to load articles');
     }).finally(() => setLoadingList(false));
@@ -88,6 +110,7 @@ export function ContentStudio() {
     setEditorTab('edit');
     setView('editor');
     setGenerating(true);
+    setPublishedUrl(null);
     try {
       const { data } = await api.post('/articles/generate', {
         businessId: business.id,
@@ -114,14 +137,15 @@ export function ContentStudio() {
   function handleEditArticle(article: Article) {
     setEditingArticle(article);
     setEditorTab('edit');
+    setPublishedUrl(article.published_url ?? null);
     setView('editor');
   }
 
-  // ── Save / update article ─────────────────────────────────────────────────
-  async function handleSave(status: 'draft' | 'published' = 'draft') {
+  // ── Save / update article in DB ───────────────────────────────────────────
+  async function handleSave(status: 'draft' | 'published' = 'draft'): Promise<Article | null> {
     if (!editingArticle.title?.trim() || !editingArticle.body_html?.trim()) {
       toast.error('Title and body are required');
-      return;
+      return null;
     }
     setSaving(true);
     try {
@@ -140,18 +164,52 @@ export function ContentStudio() {
       if (editingArticle.id) {
         const { data } = await api.put(`/articles/${editingArticle.id}`, { ...payload });
         setArticles((prev) => prev.map((a) => (a.id === data.id ? data : a)));
+        setEditingArticle((ea) => ({ ...ea, ...data }));
         toast.success('Article updated');
+        return data;
       } else {
         const { data } = await api.post('/articles', payload);
         setArticles((prev) => [data, ...prev]);
         setUsage((u) => u ? { ...u, used: u.used + 1 } : u);
-        toast.success(status === 'published' ? 'Article published!' : 'Saved as draft');
+        setEditingArticle((ea) => ({ ...ea, ...data }));
+        toast.success(status === 'published' ? 'Article saved!' : 'Saved as draft');
+        return data;
       }
-      setView('list');
     } catch (err: any) {
       toast.error(err.response?.data?.error ?? 'Failed to save article');
+      return null;
     } finally {
       setSaving(false);
+    }
+  }
+
+  // ── Open publish modal (save first if needed) ─────────────────────────────
+  async function handleOpenPublish() {
+    let article = editingArticle as Article;
+    if (!editingArticle.id) {
+      const saved = await handleSave('draft');
+      if (!saved) return;
+      article = saved;
+    }
+    setPublishModal(true);
+  }
+
+  // ── Publish to WordPress ──────────────────────────────────────────────────
+  async function handlePublishToWordPress() {
+    if (!editingArticle.id) return;
+    setPublishing(true);
+    try {
+      const { data } = await api.post(`/articles/${editingArticle.id}/publish`, { wpStatus });
+      const url: string = data.published_url;
+      setPublishedUrl(url);
+      setEditingArticle((ea) => ({ ...ea, status: wpStatus === 'publish' ? 'published' : 'draft', published_url: url }));
+      setArticles((prev) => prev.map((a) => (a.id === data.article?.id ? data.article : a)));
+      toast.success(wpStatus === 'publish' ? 'Published to WordPress!' : 'Saved to WordPress as draft');
+      setPublishModal(false);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error ?? 'Failed to publish');
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -165,6 +223,13 @@ export function ContentStudio() {
     } catch {
       toast.error('Failed to delete article');
     }
+  }
+
+  function handleCopyHtml() {
+    navigator.clipboard.writeText(editingArticle.body_html ?? '').then(
+      () => toast.success('HTML copied to clipboard'),
+      () => toast.error('Copy failed — try selecting and copying manually'),
+    );
   }
 
   const atLimit = usage ? usage.used >= usage.limit : false;
@@ -184,22 +249,45 @@ export function ContentStudio() {
           >
             <ArrowLeft size={16} /> Back to articles
           </button>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {/* Export shortcuts — always available once there's content */}
+            {!generating && editingArticle.body_html && (
+              <>
+                <button
+                  onClick={handleCopyHtml}
+                  title="Copy HTML"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <Copy size={13} /> Copy HTML
+                </button>
+                <button
+                  onClick={() => downloadHtml(editingArticle.title ?? 'article', editingArticle.body_html ?? '')}
+                  title="Download HTML"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <Download size={13} /> Download
+                </button>
+              </>
+            )}
             <Button variant="outline" onClick={() => handleSave('draft')} loading={saving} disabled={generating}>
               Save draft
             </Button>
-            {isNew && (
-              <Button onClick={() => handleSave('published')} loading={saving} disabled={generating || atLimit}>
-                Publish
-              </Button>
-            )}
-            {!isNew && (
-              <Button onClick={() => handleSave(editingArticle.status as 'draft' | 'published' ?? 'draft')} loading={saving}>
-                Update
-              </Button>
-            )}
+            <Button onClick={handleOpenPublish} loading={saving} disabled={generating || (isNew && atLimit)}>
+              {cmsConnection ? <><Globe size={14} /> Publish</> : 'Publish / Export'}
+            </Button>
           </div>
         </div>
+
+        {/* Published URL banner */}
+        {publishedUrl && (
+          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
+            <Globe size={14} className="text-green-600 shrink-0" />
+            <span className="text-green-800 font-medium">Published:</span>
+            <a href={publishedUrl} target="_blank" rel="noopener noreferrer" className="text-green-700 hover:underline truncate flex items-center gap-1">
+              {publishedUrl} <ExternalLink size={12} />
+            </a>
+          </div>
+        )}
 
         {/* Topic label */}
         {editingArticle._topic && (
@@ -302,6 +390,81 @@ export function ContentStudio() {
             )}
           </>
         )}
+
+        {/* Publish modal */}
+        <Modal
+          open={publishModal}
+          onClose={() => setPublishModal(false)}
+          title={cmsConnection ? 'Publish Article' : 'Export Article'}
+          size="md"
+        >
+          {cmsConnection ? (
+            <div className="space-y-5">
+              <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
+                <Globe size={14} className="text-green-600 shrink-0" />
+                <span className="text-green-800">Connected to <span className="font-medium">{cmsConnection.site_url}</span></span>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700">Publish status</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['publish', 'draft'] as const).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setWpStatus(s)}
+                      className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${wpStatus === s ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                    >
+                      {s === 'publish' ? 'Publish live' : 'Save as draft'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <Button className="w-full" onClick={handlePublishToWordPress} loading={publishing}>
+                <Globe size={14} /> {wpStatus === 'publish' ? 'Publish to WordPress' : 'Save draft to WordPress'}
+              </Button>
+
+              <div className="border-t border-gray-100 pt-4 space-y-2">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Or export</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCopyHtml}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <Copy size={14} /> Copy HTML
+                  </button>
+                  <button
+                    onClick={() => downloadHtml(editingArticle.title ?? 'article', editingArticle.body_html ?? '')}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <Download size={14} /> Download HTML
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                No WordPress site connected. You can connect one in{' '}
+                <a href="/dashboard/settings" className="text-brand-600 hover:underline">Settings</a>, or export the article HTML to paste into any CMS.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCopyHtml}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <Copy size={15} /> Copy HTML
+                </button>
+                <button
+                  onClick={() => downloadHtml(editingArticle.title ?? 'article', editingArticle.body_html ?? '')}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <Download size={15} /> Download HTML
+                </button>
+              </div>
+            </div>
+          )}
+        </Modal>
       </div>
     );
   }
@@ -388,7 +551,7 @@ export function ContentStudio() {
           <Button variant="secondary" onClick={handleGetTopics} disabled={atLimit}>
             <Lightbulb size={15} /> Topic ideas
           </Button>
-          <Button onClick={() => { setEditingArticle({ status: 'draft' }); setEditorTab('edit'); setView('editor'); }} disabled={atLimit}>
+          <Button onClick={() => { setEditingArticle({ status: 'draft' }); setEditorTab('edit'); setPublishedUrl(null); setView('editor'); }} disabled={atLimit}>
             <Plus size={15} /> New article
           </Button>
         </div>
@@ -420,7 +583,7 @@ export function ContentStudio() {
             <Button variant="secondary" onClick={handleGetTopics}>
               <Lightbulb size={15} /> Get topic ideas
             </Button>
-            <Button onClick={() => { setEditingArticle({ status: 'draft' }); setView('editor'); }}>
+            <Button onClick={() => { setEditingArticle({ status: 'draft' }); setPublishedUrl(null); setView('editor'); }}>
               <Pencil size={15} /> Write from scratch
             </Button>
           </div>
@@ -433,15 +596,27 @@ export function ContentStudio() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <Badge variant={STATUS_VARIANTS[article.status]}>{article.status}</Badge>
+                    {article.cms_target === 'wordpress' && (
+                      <Badge variant="info"><Globe size={10} /> WordPress</Badge>
+                    )}
                     <span className="text-xs text-gray-400">~{wordCount(article.body_html)} words</span>
                     <span className="text-xs text-gray-400">{formatDate(article.created_at)}</span>
                   </div>
                   <h3 className="font-semibold text-gray-900 text-sm leading-snug mb-0.5 line-clamp-1">
                     {article.title}
                   </h3>
-                  {article.meta_description && (
+                  {article.published_url ? (
+                    <a
+                      href={article.published_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-brand-600 hover:underline flex items-center gap-1"
+                    >
+                      {article.published_url} <ExternalLink size={10} />
+                    </a>
+                  ) : article.meta_description ? (
                     <p className="text-xs text-gray-500 line-clamp-1">{article.meta_description}</p>
-                  )}
+                  ) : null}
                 </div>
                 <div className="flex gap-1.5 shrink-0">
                   <Button size="sm" variant="secondary" onClick={() => handleEditArticle(article)}>

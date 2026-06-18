@@ -3,7 +3,12 @@ import { supabase } from '../lib/supabase';
 import { requireAuth } from '../middleware/auth';
 import { checkArticleLimit } from '../middleware/planGate';
 import { generateArticleTopics, generateArticle } from '../services/ai';
+import { decrypt } from '../services/encryption';
 import { z } from 'zod';
+
+function basicAuthHeader(username: string, password: string) {
+  return 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64');
+}
 
 const router = Router();
 
@@ -171,6 +176,100 @@ router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
   const { error } = await supabase.from('articles').delete().eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.status(204).send();
+});
+
+// ── Publish article to WordPress ──────────────────────────────────────────────
+router.post('/:id/publish', requireAuth, async (req: Request, res: Response) => {
+  const PublishSchema = z.object({
+    wpStatus: z.enum(['publish', 'draft']).default('publish'),
+  });
+  const parsed = PublishSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const { data: article } = await supabase
+    .from('articles')
+    .select('id, business_id, title, body_html')
+    .eq('id', req.params.id)
+    .single();
+
+  if (!article) return res.status(404).json({ error: 'Article not found' });
+
+  const { data: biz } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('id', article.business_id)
+    .eq('user_id', req.user!.id)
+    .single();
+
+  if (!biz) return res.status(403).json({ error: 'Forbidden' });
+
+  const { data: conn } = await supabase
+    .from('cms_connections')
+    .select('id, site_url, username, encrypted_credential')
+    .eq('business_id', article.business_id)
+    .eq('status', 'active')
+    .single();
+
+  if (!conn) {
+    return res.status(400).json({ error: 'No WordPress site connected. Add one in Settings → WordPress.' });
+  }
+
+  let appPassword: string;
+  try {
+    appPassword = decrypt(conn.encrypted_credential);
+  } catch {
+    return res.status(500).json({ error: 'Failed to decrypt credentials' });
+  }
+
+  try {
+    const wpRes = await fetch(`${conn.site_url}/wp-json/wp/v2/posts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: basicAuthHeader(conn.username, appPassword),
+      },
+      body: JSON.stringify({
+        title: article.title,
+        content: article.body_html,
+        status: parsed.data.wpStatus,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (wpRes.status === 401 || wpRes.status === 403) {
+      await supabase.from('cms_connections').update({ status: 'error' }).eq('id', conn.id);
+      return res.status(400).json({ error: 'WordPress authentication failed. Reconnect your site in Settings.' });
+    }
+    if (!wpRes.ok) {
+      const body: any = await wpRes.json().catch(() => ({}));
+      return res.status(400).json({ error: body?.message ?? `WordPress returned ${wpRes.status}` });
+    }
+
+    const wpData: any = await wpRes.json();
+    const publishedUrl: string = wpData.link;
+    const now = new Date().toISOString();
+
+    const { data: updated } = await supabase
+      .from('articles')
+      .update({
+        published_url: publishedUrl,
+        status: parsed.data.wpStatus === 'publish' ? 'published' : 'draft',
+        published_at: parsed.data.wpStatus === 'publish' ? now : null,
+        cms_target: 'wordpress',
+        updated_at: now,
+      })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    res.json({ published_url: publishedUrl, article: updated });
+  } catch (err: any) {
+    const msg: string = err?.message ?? '';
+    if (msg.includes('timeout') || msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND')) {
+      return res.status(400).json({ error: 'Cannot reach your WordPress site. Check the connection in Settings.' });
+    }
+    return res.status(500).json({ error: msg || 'Failed to publish to WordPress' });
+  }
 });
 
 export default router;

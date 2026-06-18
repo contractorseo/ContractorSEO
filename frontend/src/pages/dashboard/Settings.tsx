@@ -10,7 +10,8 @@ import { getDaysLeft, formatDate } from '@/lib/utils';
 import api from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
-import { CreditCard, Building2, CheckCircle, Shield, MapPin, ExternalLink, Unlink } from 'lucide-react';
+import { CreditCard, Building2, CheckCircle, Shield, MapPin, ExternalLink, Unlink, Globe } from 'lucide-react';
+import type { CmsConnection } from '@/types';
 
 interface Context { user: User; business: Business }
 
@@ -43,6 +44,13 @@ export function Settings() {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
 
+  // WordPress state
+  const [wpConnection, setWpConnection] = useState<CmsConnection | null>(null);
+  const [wpLoading, setWpLoading] = useState(true);
+  const [wpForm, setWpForm] = useState({ siteUrl: '', username: '', appPassword: '' });
+  const [wpConnecting, setWpConnecting] = useState(false);
+  const [wpDisconnecting, setWpDisconnecting] = useState(false);
+
   // GBP state
   const [gbpConnected, setGbpConnected] = useState(business.gbp_connected);
   const [gbpConnecting, setGbpConnecting] = useState(false);
@@ -50,6 +58,51 @@ export function Settings() {
   const [locationModal, setLocationModal] = useState(false);
   const [pendingLocations, setPendingLocations] = useState<GBPLocation[]>([]);
   const [savingLocation, setSavingLocation] = useState<string | null>(null);
+
+  // Load WordPress connection
+  useEffect(() => {
+    api.get(`/cms/${business.id}`)
+      .then(({ data }) => setWpConnection(Array.isArray(data) && data.length > 0 ? data[0] : null))
+      .catch(() => {})
+      .finally(() => setWpLoading(false));
+  }, [business.id]);
+
+  async function handleConnectWordPress() {
+    if (!wpForm.siteUrl.trim() || !wpForm.username.trim() || !wpForm.appPassword.trim()) {
+      toast.error('All fields are required');
+      return;
+    }
+    setWpConnecting(true);
+    try {
+      const { data } = await api.post('/cms/connect', {
+        businessId: business.id,
+        siteUrl: wpForm.siteUrl.trim(),
+        username: wpForm.username.trim(),
+        appPassword: wpForm.appPassword.trim(),
+      });
+      setWpConnection(data);
+      setWpForm({ siteUrl: '', username: '', appPassword: '' });
+      toast.success('WordPress connected!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error ?? 'Failed to connect WordPress');
+    } finally {
+      setWpConnecting(false);
+    }
+  }
+
+  async function handleDisconnectWordPress() {
+    if (!wpConnection) return;
+    setWpDisconnecting(true);
+    try {
+      await api.delete(`/cms/${wpConnection.id}`);
+      setWpConnection(null);
+      toast.success('WordPress disconnected');
+    } catch {
+      toast.error('Failed to disconnect');
+    } finally {
+      setWpDisconnecting(false);
+    }
+  }
 
   // Handle OAuth callback redirect params
   useEffect(() => {
@@ -249,6 +302,75 @@ export function Settings() {
             <p className="text-xs text-gray-400">
               You'll be redirected to Google to authorize access. Requires a verified Google Business Profile listing.
             </p>
+          </div>
+        )}
+      </Card>
+
+      {/* WordPress */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe size={18} /> WordPress
+          </CardTitle>
+          <Badge variant={wpConnection ? (wpConnection.status === 'error' ? 'danger' : 'success') : 'gray'}>
+            {wpLoading ? 'Loading…' : wpConnection ? (wpConnection.status === 'error' ? 'Auth error' : 'Connected') : 'Not connected'}
+          </Badge>
+        </CardHeader>
+
+        {wpConnection ? (
+          <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
+            <div>
+              <p className="font-medium text-gray-900 text-sm">{wpConnection.site_url}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Logged in as <span className="font-medium">{wpConnection.username}</span></p>
+              {wpConnection.status === 'error' && (
+                <p className="text-xs text-red-600 mt-1">Authentication failed — please reconnect.</p>
+              )}
+            </div>
+            <Button variant="outline" onClick={handleDisconnectWordPress} loading={wpDisconnecting} size="sm">
+              <Unlink size={14} /> Disconnect
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Connect your WordPress site to publish AI articles directly. You'll need an{' '}
+              <a
+                href="https://wordpress.org/documentation/article/application-passwords/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-600 hover:underline"
+              >
+                Application Password
+              </a>{' '}
+              (WordPress → Users → Profile → Application Passwords).
+            </p>
+            <div className="grid gap-3">
+              <Input
+                label="WordPress site URL"
+                placeholder="https://yoursite.com"
+                value={wpForm.siteUrl}
+                onChange={(e) => setWpForm((f) => ({ ...f, siteUrl: e.target.value }))}
+              />
+              <Input
+                label="Username"
+                placeholder="Your WordPress username"
+                value={wpForm.username}
+                onChange={(e) => setWpForm((f) => ({ ...f, username: e.target.value }))}
+              />
+              <Input
+                label="Application Password"
+                placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
+                type="password"
+                value={wpForm.appPassword}
+                onChange={(e) => setWpForm((f) => ({ ...f, appPassword: e.target.value }))}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <Button onClick={handleConnectWordPress} loading={wpConnecting}>
+                Connect WordPress
+              </Button>
+              <p className="text-xs text-gray-400">We test the connection before saving.</p>
+            </div>
           </div>
         )}
       </Card>

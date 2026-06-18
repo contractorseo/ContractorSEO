@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 
 import authRouter from './routes/auth';
 import articlesRouter from './routes/articles';
+import cmsRouter from './routes/cms';
 import businessesRouter from './routes/businesses';
 import postsRouter from './routes/posts';
 import reviewsRouter from './routes/reviews';
@@ -33,6 +34,7 @@ app.use(limiter);
 
 app.use('/api/auth', authRouter);
 app.use('/api/articles', articlesRouter);
+app.use('/api/cms', cmsRouter);
 app.use('/api/businesses', businessesRouter);
 app.use('/api/posts', postsRouter);
 app.use('/api/reviews', reviewsRouter);

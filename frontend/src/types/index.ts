@@ -135,6 +135,16 @@ export interface ArticleUsage {
   plan: string;
 }
 
+export interface CmsConnection {
+  id: string;
+  business_id: string;
+  type: 'wordpress';
+  site_url: string;
+  username: string;
+  status: 'active' | 'error';
+  created_at: string;
+}
+
 export type Plan = 'trial' | 'growth' | 'agency';
 
 export interface PlanFeatures {
