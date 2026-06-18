@@ -105,6 +105,36 @@ export interface ReportData {
   generatedAt: string;
 }
 
+export interface Article {
+  id: string;
+  business_id: string;
+  title: string;
+  slug: string;
+  meta_description: string | null;
+  body_html: string;
+  faq_json: Array<{ question: string; answer: string }> | null;
+  schema_jsonld: object | null;
+  status: 'draft' | 'scheduled' | 'published';
+  scheduled_for: string | null;
+  published_at: string | null;
+  published_url: string | null;
+  cms_target: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ArticleTopic {
+  topic: string;
+  type: 'cost_guide' | 'how_to' | 'local_guide' | 'faq';
+}
+
+export interface ArticleUsage {
+  used: number;
+  limit: number;
+  period: 'monthly' | 'total';
+  plan: string;
+}
+
 export type Plan = 'trial' | 'growth' | 'agency';
 
 export interface PlanFeatures {

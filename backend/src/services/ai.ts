@@ -133,6 +133,147 @@ Respond in JSON array:
   return jsonMatch ? JSON.parse(jsonMatch[0]) : [];
 }
 
+export interface ArticleTopicOptions {
+  businessName: string;
+  category: string;
+  city: string;
+}
+
+export interface ArticleTopic {
+  topic: string;
+  type: 'cost_guide' | 'how_to' | 'local_guide' | 'faq';
+}
+
+export async function generateArticleTopics(opts: ArticleTopicOptions): Promise<ArticleTopic[]> {
+  const prompt = `You are a local SEO content strategist for contractor businesses.
+
+Generate 12 blog article topic ideas for:
+- Business: ${opts.businessName}
+- Trade: ${opts.category}
+- City: ${opts.city}
+
+Requirements:
+- Mix: 4 cost guides, 3 how-to guides, 3 local guides, 2 FAQ/informational
+- Every topic must have clear local intent (reference ${opts.city} or surrounding area)
+- Titles must be specific and search-intent-driven, not generic
+- Focus on homeowner questions and pre-purchase research
+
+Return a JSON array only, no extra text:
+[
+  { "topic": "How Much Does It Cost to Install an EV Charger in ${opts.city}?", "type": "cost_guide" },
+  ...
+]`;
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 800,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = message.content[0].type === 'text' ? message.content[0].text : '[]';
+  const jsonMatch = text.match(/\[[\s\S]*\]/);
+  return jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+}
+
+export interface GenerateArticleOptions {
+  topic: string;
+  businessName: string;
+  category: string;
+  city: string;
+  website?: string | null;
+}
+
+export interface GeneratedArticle {
+  title: string;
+  slug: string;
+  meta_description: string;
+  body_html: string;
+  faq_json: Array<{ question: string; answer: string }>;
+  schema_jsonld: object;
+}
+
+function slugify(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+    .slice(0, 100);
+}
+
+export async function generateArticle(opts: GenerateArticleOptions): Promise<GeneratedArticle> {
+  const prompt = `You are an expert local SEO content writer for contractor businesses.
+
+Write a complete, SEO-optimized blog article for:
+- Business: ${opts.businessName} (${opts.category} in ${opts.city})
+- Topic: ${opts.topic}
+
+Requirements:
+- 900–1200 words total
+- Structure: intro (100–150 words) → 4–5 H2 sections with H3 subsections where needed → FAQ section
+- Reference ${opts.city} naturally throughout (neighborhoods, permit offices, climate, local codes where relevant)
+- Include specific realistic cost ranges, timeframes, or stats where helpful
+- Professional but approachable tone — sound like a real local expert, not a marketing brochure
+- End with a 4–5 item FAQ section
+- Do NOT use hashtags, emojis, or sales pressure language
+- HTML body: only use <h2>, <h3>, <p>, <ul>, <li>, <strong> tags — no <html>/<body>/<head> wrapper
+
+Return valid JSON only, no markdown fences:
+{
+  "title": "SEO title (55–65 chars, includes primary keyword + city)",
+  "meta_description": "Meta description (145–160 chars, primary keyword + location + value prop)",
+  "body_html": "<h2>First Section</h2><p>...</p>...",
+  "faq": [
+    { "question": "...", "answer": "..." }
+  ]
+}`;
+
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 4000,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const text = message.content[0].type === 'text' ? message.content[0].text : '';
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('AI returned invalid response');
+
+  const parsed = JSON.parse(jsonMatch[0]);
+  const faq: Array<{ question: string; answer: string }> = Array.isArray(parsed.faq) ? parsed.faq : [];
+
+  const schema_jsonld = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Article',
+        headline: parsed.title,
+        description: parsed.meta_description,
+        author: { '@type': 'Organization', name: opts.businessName },
+        publisher: { '@type': 'Organization', name: opts.businessName },
+        ...(opts.website ? { url: opts.website } : {}),
+      },
+      ...(faq.length > 0 ? [{
+        '@type': 'FAQPage',
+        mainEntity: faq.map(({ question, answer }) => ({
+          '@type': 'Question',
+          name: question,
+          acceptedAnswer: { '@type': 'Answer', text: answer },
+        })),
+      }] : []),
+    ],
+  };
+
+  return {
+    title: parsed.title,
+    slug: slugify(parsed.title),
+    meta_description: parsed.meta_description,
+    body_html: parsed.body_html,
+    faq_json: faq,
+    schema_jsonld,
+  };
+}
+
 export interface SEOAuditOptions {
   businessName: string;
   category: string;

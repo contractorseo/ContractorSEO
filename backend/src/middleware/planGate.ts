@@ -3,10 +3,10 @@ import { supabase } from '../lib/supabase';
 
 type Plan = 'trial' | 'growth' | 'agency';
 
-const PLAN_LIMITS: Record<Plan, { postsPerMonth: number; reviewRequests: number; keywords: number }> = {
-  trial:  { postsPerMonth: 4,   reviewRequests: 20,   keywords: 10  },
-  growth: { postsPerMonth: 16,  reviewRequests: 200,  keywords: 50  },
-  agency: { postsPerMonth: 9999, reviewRequests: 2000, keywords: 200 },
+const PLAN_LIMITS: Record<Plan, { postsPerMonth: number; reviewRequests: number; keywords: number; articlesTotal?: number; articlesPerMonth?: number }> = {
+  trial:  { postsPerMonth: 4,    reviewRequests: 20,   keywords: 10,  articlesTotal: 2 },
+  growth: { postsPerMonth: 16,   reviewRequests: 200,  keywords: 50,  articlesPerMonth: 15 },
+  agency: { postsPerMonth: 9999, reviewRequests: 2000, keywords: 200, articlesPerMonth: 50 },
 };
 
 async function getUserPlan(userId: string): Promise<{ plan: Plan; trialEndsAt: string | null }> {
@@ -73,6 +73,54 @@ export async function checkPostLimit(req: Request, res: Response, next: NextFunc
       limit,
       used: count,
     });
+  }
+
+  next();
+}
+
+export async function checkArticleLimit(req: Request, res: Response, next: NextFunction) {
+  const { plan, trialEndsAt } = await getUserPlan(req.user!.id);
+
+  if (plan === 'trial' && isTrialExpired(trialEndsAt)) {
+    return res.status(402).json({ error: 'Trial expired. Please upgrade to continue.', code: 'TRIAL_EXPIRED' });
+  }
+
+  const { data: bizRows } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('user_id', req.user!.id);
+
+  const bizIds = (bizRows ?? []).map((b) => b.id);
+  if (bizIds.length === 0) return next();
+
+  if (plan === 'trial') {
+    const limit = PLAN_LIMITS.trial.articlesTotal!;
+    const { count } = await supabase
+      .from('articles')
+      .select('id', { count: 'exact', head: true })
+      .in('business_id', bizIds);
+    if ((count ?? 0) >= limit) {
+      return res.status(402).json({
+        error: `Article limit reached (${limit} total on trial). Upgrade to publish more.`,
+        code: 'ARTICLE_LIMIT_REACHED', limit, used: count,
+      });
+    }
+  } else {
+    const limit = PLAN_LIMITS[plan].articlesPerMonth!;
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const { count } = await supabase
+      .from('articles')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', startOfMonth.toISOString())
+      .in('business_id', bizIds);
+    if ((count ?? 0) >= limit) {
+      return res.status(402).json({
+        error: `Article limit reached (${limit}/month on ${plan} plan). Upgrade to publish more.`,
+        code: 'ARTICLE_LIMIT_REACHED', limit, used: count,
+      });
+    }
   }
 
   next();

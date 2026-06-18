@@ -15,6 +15,7 @@ import { Competitors } from '@/pages/dashboard/Competitors';
 import { Citations } from '@/pages/dashboard/Citations';
 import { Settings } from '@/pages/dashboard/Settings';
 import { Report } from '@/pages/dashboard/Report';
+import { ContentStudio } from '@/pages/dashboard/ContentStudio';
 import { PublicReport } from '@/pages/public/PublicReport';
 import { NotFound } from '@/pages/NotFound';
 
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="keywords" element={<Keywords />} />
             <Route path="competitors" element={<Competitors />} />
             <Route path="citations" element={<Citations />} />
+            <Route path="content-studio" element={<ContentStudio />} />
             <Route path="settings" element={<Settings />} />
             <Route path="report" element={<Report />} />
           </Route>

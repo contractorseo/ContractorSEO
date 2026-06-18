@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Star, Search, Users, MapPin,
   Settings, LogOut, Zap, ChevronRight, ChevronDown, Plus,
-  BarChart3, Building2, X,
+  BarChart3, Building2, X, BookOpen,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { User, Business } from '@/types';
@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 const NAV_ITEMS = [
   { to: '/dashboard',             icon: LayoutDashboard, label: 'Overview',     end: true },
   { to: '/dashboard/posts',       icon: FileText,        label: 'Content' },
+  { to: '/dashboard/content-studio', icon: BookOpen,    label: 'Content Studio' },
   { to: '/dashboard/reviews',     icon: Star,            label: 'Reviews' },
   { to: '/dashboard/keywords',    icon: Search,          label: 'Keywords' },
   { to: '/dashboard/competitors', icon: Users,           label: 'Competitors' },
