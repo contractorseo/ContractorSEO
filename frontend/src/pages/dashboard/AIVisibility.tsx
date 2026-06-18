@@ -124,7 +124,8 @@ export function AIVisibility() {
       setPrompts(promptRes.data);
       setChecks(checkRes.data);
       setUsage(usageRes.data);
-    } catch {
+    } catch (err: any) {
+      console.error('[AIVisibility] load failed — status:', err?.response?.status, 'url:', err?.config?.url, 'msg:', err?.message, err);
       toast.error('Failed to load AI Visibility data');
     } finally {
       setLoading(false);

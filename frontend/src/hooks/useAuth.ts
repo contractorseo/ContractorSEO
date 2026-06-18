@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import api from '@/lib/api';
 import { User } from '@/types';
 
 interface AuthState {
@@ -22,7 +21,7 @@ export function useAuth() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        fetchProfile(session.user.id).then((profile) => {
+        fetchProfile(session.user.id, session.access_token).then((profile) => {
           setState({ supabaseUser: session.user, profile, session, loading: false });
         });
       } else {
@@ -32,7 +31,7 @@ export function useAuth() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
+        const profile = await fetchProfile(session.user.id, session.access_token);
         setState({ supabaseUser: session.user, profile, session, loading: false });
       } else {
         setState({ supabaseUser: null, profile: null, session: null, loading: false });
@@ -45,11 +44,31 @@ export function useAuth() {
   return state;
 }
 
-async function fetchProfile(userId: string): Promise<User | null> {
-  const [{ data }, ctxRes] = await Promise.all([
+async function fetchBetaMode(token: string): Promise<boolean> {
+  // Use raw fetch with explicit token — avoids the async interceptor timing hazard
+  // and removes the axios dependency from this early bootstrap path.
+  const raw = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
+  const base = raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw; // strip BOM
+  const url = `${base}/api/auth/context`;
+  console.log('[useAuth] fetching betaMode from', url);
+  try {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json() as { betaMode: boolean };
+    console.log('[useAuth] betaMode result:', data);
+    return !!data.betaMode;
+  } catch (err) {
+    console.error('[useAuth] betaMode fetch failed:', err);
+    return false;
+  }
+}
+
+async function fetchProfile(userId: string, token: string): Promise<User | null> {
+  const [{ data }, betaMode] = await Promise.all([
     supabase.from('users').select('*').eq('id', userId).single(),
-    api.get<{ betaMode: boolean }>('/api/auth/context').then((r) => r.data).catch(() => ({ betaMode: false })),
+    fetchBetaMode(token),
   ]);
   if (!data) return null;
-  return ctxRes.betaMode ? { ...data, plan: 'agency' as const } : data;
+  return betaMode ? { ...data, plan: 'agency' as const } : data;
 }
