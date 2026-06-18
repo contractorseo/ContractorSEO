@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { supabase } from '../lib/supabase';
 import { requireAuth } from '../middleware/auth';
-import { requirePlan } from '../middleware/planGate';
+import { requirePlan, getEffectivePlan } from '../middleware/planGate';
 import { getConfiguredEngines, runEngineChecks } from '../services/aiVisibility';
 import { z } from 'zod';
 
@@ -23,10 +23,6 @@ async function ownsBusiness(userId: string, businessId: string | string[]) {
   return data;
 }
 
-async function getUserPlan(userId: string): Promise<'trial' | 'growth' | 'agency'> {
-  const { data } = await supabase.from('users').select('plan').eq('id', userId).single();
-  return (data?.plan ?? 'trial') as 'trial' | 'growth' | 'agency';
-}
 
 // ── Which engines are configured ─────────────────────────────────────────────
 router.get('/engines', (_req: Request, res: Response) => {
@@ -76,7 +72,7 @@ router.post(
     const biz = await ownsBusiness(req.user!.id, req.params.businessId);
     if (!biz) return res.status(404).json({ error: 'Business not found' });
 
-    const plan = await getUserPlan(req.user!.id);
+    const plan = await getEffectivePlan(req.user!.id);
     const cap = PLAN_CAPS[plan as 'growth' | 'agency'];
 
     const { count } = await supabase
@@ -115,7 +111,7 @@ router.post(
       return res.status(400).json({ error: 'No AI engines configured. Add OPENAI_API_KEY or PERPLEXITY_API_KEY to the backend environment.' });
     }
 
-    const plan = await getUserPlan(req.user!.id);
+    const plan = await getEffectivePlan(req.user!.id);
     const cap = PLAN_CAPS[plan as 'growth' | 'agency'];
 
     // Monthly cap check
@@ -203,7 +199,7 @@ router.get('/:businessId/usage', requireAuth, async (req: Request, res: Response
   const biz = await ownsBusiness(req.user!.id, req.params.businessId);
   if (!biz) return res.status(404).json({ error: 'Business not found' });
 
-  const plan = await getUserPlan(req.user!.id);
+  const plan = await getEffectivePlan(req.user!.id);
   const cap = plan === 'trial' ? { prompts: 0, checksPerMonth: 0 } : PLAN_CAPS[plan as 'growth' | 'agency'];
 
   const startOfMonth = new Date();

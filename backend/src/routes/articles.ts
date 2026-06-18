@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { supabase } from '../lib/supabase';
 import { requireAuth } from '../middleware/auth';
-import { checkArticleLimit } from '../middleware/planGate';
+import { checkArticleLimit, getEffectivePlan } from '../middleware/planGate';
 import { generateArticleTopics, generateArticle } from '../services/ai';
 import { decrypt } from '../services/encryption';
 import { z } from 'zod';
@@ -111,8 +111,8 @@ router.post('/auto-generate', requireAuth, async (req: Request, res: Response) =
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const { data: userData } = await supabase.from('users').select('plan').eq('id', req.user!.id).single();
-  if (userData?.plan !== 'agency') {
+  const effectivePlan = await getEffectivePlan(req.user!.id);
+  if (effectivePlan !== 'agency') {
     return res.status(403).json({ error: 'Auto-generate requires Agency plan' });
   }
 
@@ -209,8 +209,7 @@ router.post('/auto-generate', requireAuth, async (req: Request, res: Response) =
 
 // ── Usage (user-wide, plan-aware) ────────────────────────────────────────────
 router.get('/usage', requireAuth, async (req: Request, res: Response) => {
-  const { data: userData } = await supabase.from('users').select('plan').eq('id', req.user!.id).single();
-  const plan = (userData?.plan ?? 'trial') as 'trial' | 'growth' | 'agency';
+  const plan = await getEffectivePlan(req.user!.id);
 
   const { data: bizRows } = await supabase.from('businesses').select('id').eq('user_id', req.user!.id);
   const bizIds = (bizRows ?? []).map((b: any) => b.id);

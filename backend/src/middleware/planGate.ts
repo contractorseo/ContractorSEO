@@ -9,7 +9,16 @@ const PLAN_LIMITS: Record<Plan, { postsPerMonth: number; reviewRequests: number;
   agency: { postsPerMonth: 9999, reviewRequests: 2000, keywords: 200, articlesPerMonth: 50 },
 };
 
+// Returns 'agency' for every user when BETA_MODE=true; otherwise reads DB.
+// Use this everywhere plan-dependent logic runs so BETA_MODE is the single switch.
+export async function getEffectivePlan(userId: string): Promise<Plan> {
+  if (process.env.BETA_MODE === 'true') return 'agency';
+  const { data } = await supabase.from('users').select('plan').eq('id', userId).single();
+  return (data?.plan ?? 'trial') as Plan;
+}
+
 async function getUserPlan(userId: string): Promise<{ plan: Plan; trialEndsAt: string | null }> {
+  if (process.env.BETA_MODE === 'true') return { plan: 'agency', trialEndsAt: null };
   const { data } = await supabase
     .from('users')
     .select('plan, trial_ends_at')

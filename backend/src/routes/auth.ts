@@ -30,4 +30,10 @@ router.post('/confirm-email', async (req, res) => {
   res.json({ ok: true });
 });
 
+// Frontend reads this to auto-unlock plan gates when beta mode is on.
+// No auth required — just reflects the server's BETA_MODE env var.
+router.get('/context', (_req, res) => {
+  res.json({ betaMode: process.env.BETA_MODE === 'true' });
+});
+
 export default router;

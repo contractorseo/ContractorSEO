@@ -45,6 +45,13 @@ export function useAuth() {
 }
 
 async function fetchProfile(userId: string): Promise<User | null> {
-  const { data } = await supabase.from('users').select('*').eq('id', userId).single();
-  return data;
+  const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
+  const [{ data }, ctxRes] = await Promise.all([
+    supabase.from('users').select('*').eq('id', userId).single(),
+    fetch(`${apiBase}/api/auth/context`)
+      .then((r) => r.json() as Promise<{ betaMode: boolean }>)
+      .catch(() => ({ betaMode: false })),
+  ]);
+  if (!data) return null;
+  return ctxRes.betaMode ? { ...data, plan: 'agency' as const } : data;
 }
