@@ -6,6 +6,18 @@ import { z } from 'zod';
 
 const router = Router();
 
+// Temporary diagnostic — safe (exposes length only, not the key)
+router.get('/diag', (_req, res) => {
+  const k = process.env.ENCRYPTION_KEY;
+  try {
+    const enc = encrypt('probe');
+    const dec = decrypt(enc);
+    res.json({ ok: dec === 'probe', key_set: !!k, key_length: k?.length ?? 0 });
+  } catch (err: any) {
+    res.json({ ok: false, key_set: !!k, key_length: k?.length ?? 0, error: err.message });
+  }
+});
+
 function basicAuthHeader(username: string, password: string) {
   return 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64');
 }
