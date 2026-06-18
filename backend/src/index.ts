@@ -17,6 +17,7 @@ import citationsRouter from './routes/citations';
 import stripeRouter from './routes/stripe';
 import gbpRouter from './routes/gbp';
 import reportsRouter from './routes/reports';
+import aiVisibilityRouter from './routes/aiVisibility';
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -44,6 +45,7 @@ app.use('/api/citations', citationsRouter);
 app.use('/api/stripe', stripeRouter);
 app.use('/api/gbp', gbpRouter);
 app.use('/api/reports', reportsRouter);
+app.use('/api/ai-visibility', aiVisibilityRouter);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 

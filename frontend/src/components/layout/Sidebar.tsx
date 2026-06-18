@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, Star, Search, Users, MapPin,
   Settings, LogOut, Zap, ChevronRight, ChevronDown, Plus,
-  BarChart3, Building2, X, BookOpen,
+  BarChart3, Building2, X, BookOpen, Bot,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { User, Business } from '@/types';
@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { to: '/dashboard/keywords',    icon: Search,          label: 'Keywords' },
   { to: '/dashboard/competitors', icon: Users,           label: 'Competitors' },
   { to: '/dashboard/citations',   icon: MapPin,          label: 'Citations' },
+  { to: '/dashboard/ai-visibility', icon: Bot,            label: 'AI Visibility' },
   { to: '/dashboard/report',      icon: BarChart3,       label: 'Report' },
   { to: '/dashboard/settings',    icon: Settings,        label: 'Settings' },
 ];

@@ -147,6 +147,23 @@ export interface CmsConnection {
   created_at: string;
 }
 
+export interface AIVisibilityPrompt {
+  id: string;
+  business_id: string;
+  prompt_template: string;
+  created_at: string;
+}
+
+export interface AIVisibilityCheck {
+  id: string;
+  business_id: string;
+  prompt: string;
+  engine: string;
+  mentioned: boolean;
+  snippet: string | null;
+  checked_at: string;
+}
+
 export type Plan = 'trial' | 'growth' | 'agency';
 
 export interface PlanFeatures {
