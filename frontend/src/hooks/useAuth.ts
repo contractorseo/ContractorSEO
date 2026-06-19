@@ -48,7 +48,8 @@ async function fetchBetaMode(token: string): Promise<boolean> {
   // Use raw fetch with explicit token — avoids the async interceptor timing hazard
   // and removes the axios dependency from this early bootstrap path.
   const raw = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
-  const base = raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw; // strip BOM
+  const stripped = raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw;
+  const base = stripped.replace(/\/api\/?$/, ''); // strip BOM + trailing /api
   const url = `${base}/api/auth/context`;
   console.log('[useAuth] fetching betaMode from', url);
   try {

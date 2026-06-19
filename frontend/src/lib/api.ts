@@ -2,8 +2,12 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { supabase } from './supabase';
 
-const raw = import.meta.env.VITE_API_URL ?? '/api';
-const baseURL = raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw;
+// Strip BOM, then strip any trailing /api so route paths (/api/...) never double up
+// regardless of whether VITE_API_URL was set with or without the /api suffix.
+const raw = (import.meta.env.VITE_API_URL ?? '') as string;
+const baseURL = raw.charCodeAt(0) === 0xFEFF
+  ? raw.slice(1).replace(/\/api\/?$/, '')
+  : raw.replace(/\/api\/?$/, '');
 
 const api = axios.create({ baseURL });
 
