@@ -110,9 +110,9 @@ export function ContentStudio() {
 
   useEffect(() => {
     Promise.all([
-      api.get(`/articles/${business.id}`),
-      api.get('/articles/usage'),
-      api.get(`/cms/${business.id}`),
+      api.get(`/api/articles/${business.id}`),
+      api.get('/api/articles/usage'),
+      api.get(`/api/cms/${business.id}`),
     ]).then(([articlesRes, usageRes, cmsRes]) => {
       setArticles(Array.isArray(articlesRes.data) ? articlesRes.data : []);
       setUsage(usageRes.data);
@@ -124,11 +124,11 @@ export function ContentStudio() {
     // Fire-and-forget: publish any due scheduled articles
     if (!processDueFired.current) {
       processDueFired.current = true;
-      api.post('/articles/process-due').then(({ data }) => {
+      api.post('/api/articles/process-due').then(({ data }) => {
         if (data.published > 0) {
           toast.success(`${data.published} scheduled article${data.published > 1 ? 's' : ''} auto-published`);
           // Refresh list
-          api.get(`/articles/${business.id}`).then(r => setArticles(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+          api.get(`/api/articles/${business.id}`).then(r => setArticles(Array.isArray(r.data) ? r.data : [])).catch(() => {});
         }
       }).catch(() => {});
     }
@@ -138,7 +138,7 @@ export function ContentStudio() {
   async function handleGetTopics() {
     setLoadingTopics(true); setTopics([]); setView('topics');
     try {
-      const { data } = await api.post('/articles/topics', { businessId: business.id });
+      const { data } = await api.post('/api/articles/topics', { businessId: business.id });
       setTopics(Array.isArray(data) ? data : []);
     } catch {
       toast.error('Failed to generate topics'); setView('list');
@@ -150,7 +150,7 @@ export function ContentStudio() {
     setEditingArticle({ _topic: topic }); setEditorTab('edit');
     setPublishedUrl(null); setView('editor'); setGenerating(true);
     try {
-      const { data } = await api.post('/articles/generate', { businessId: business.id, topic });
+      const { data } = await api.post('/api/articles/generate', { businessId: business.id, topic });
       setEditingArticle({ _topic: topic, title: data.title, slug: data.slug, meta_description: data.meta_description, body_html: data.body_html, faq_json: data.faq_json, schema_jsonld: data.schema_jsonld, status: 'draft' });
     } catch { toast.error('Article generation failed'); }
     finally { setGenerating(false); }
@@ -180,13 +180,13 @@ export function ContentStudio() {
         published_at: status === 'published' ? new Date().toISOString() : null,
       };
       if (editingArticle.id) {
-        const { data } = await api.put(`/articles/${editingArticle.id}`, payload);
+        const { data } = await api.put(`/api/articles/${editingArticle.id}`, payload);
         setArticles(prev => prev.map(a => a.id === data.id ? data : a));
         setEditingArticle(ea => ({ ...ea, ...data }));
         toast.success('Article updated');
         return data;
       } else {
-        const { data } = await api.post('/articles', payload);
+        const { data } = await api.post('/api/articles', payload);
         setArticles(prev => [data, ...prev]);
         setUsage(u => u ? { ...u, used: u.used + 1 } : u);
         setEditingArticle(ea => ({ ...ea, ...data }));
@@ -215,7 +215,7 @@ export function ContentStudio() {
     if (new Date(isoDate) <= new Date()) { toast.error('Date must be in the future'); return; }
     setScheduling(true);
     try {
-      const { data } = await api.post(`/articles/${editingArticle.id}/schedule`, { scheduled_for: isoDate });
+      const { data } = await api.post(`/api/articles/${editingArticle.id}/schedule`, { scheduled_for: isoDate });
       setEditingArticle(ea => ({ ...ea, ...data }));
       setArticles(prev => prev.map(a => a.id === data.id ? data : a));
       toast.success(`Scheduled for ${new Date(isoDate).toLocaleDateString()}`);
@@ -236,7 +236,7 @@ export function ContentStudio() {
     if (!editingArticle.id) return;
     setPublishing(true);
     try {
-      const { data } = await api.post(`/articles/${editingArticle.id}/publish`, { wpStatus });
+      const { data } = await api.post(`/api/articles/${editingArticle.id}/publish`, { wpStatus });
       setPublishedUrl(data.published_url);
       setEditingArticle(ea => ({ ...ea, status: wpStatus === 'publish' ? 'published' : 'draft', published_url: data.published_url }));
       setArticles(prev => prev.map(a => a.id === data.article?.id ? data.article : a));
@@ -254,7 +254,7 @@ export function ContentStudio() {
     if (new Date(isoDate) <= new Date()) { toast.error('Cannot schedule a past date'); return; }
     setScheduling(true);
     try {
-      const { data } = await api.post(`/articles/${calScheduleArticleId}/schedule`, { scheduled_for: isoDate });
+      const { data } = await api.post(`/api/articles/${calScheduleArticleId}/schedule`, { scheduled_for: isoDate });
       setArticles(prev => prev.map(a => a.id === data.id ? data : a));
       toast.success(`Scheduled for ${new Date(isoDate).toLocaleDateString()}`);
       setCalScheduleModal(null); setCalScheduleArticleId('');
@@ -267,7 +267,7 @@ export function ContentStudio() {
   async function handleAutoGenerate() {
     setAutoGenLoading(true);
     try {
-      const { data } = await api.post('/articles/auto-generate', { businessId: business.id, cadence });
+      const { data } = await api.post('/api/articles/auto-generate', { businessId: business.id, cadence });
       if (data.articles?.length > 0) {
         setArticles(prev => [...data.articles, ...prev]);
         setUsage(u => u ? { ...u, used: u.used + data.articles.length } : u);
@@ -284,7 +284,7 @@ export function ContentStudio() {
   async function handleDelete(id: string) {
     if (!confirm('Delete this article?')) return;
     try {
-      await api.delete(`/articles/${id}`);
+      await api.delete(`/api/articles/${id}`);
       setArticles(prev => prev.filter(a => a.id !== id));
       setUsage(u => u ? { ...u, used: Math.max(0, u.used - 1) } : u);
       toast.success('Article deleted');

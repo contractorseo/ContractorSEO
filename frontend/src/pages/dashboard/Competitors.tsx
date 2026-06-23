@@ -66,7 +66,7 @@ export function Competitors() {
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    api.get(`/competitors/${business.id}`)
+    api.get(`/api/competitors/${business.id}`)
       .then((r) => { setCompetitors(Array.isArray(r.data) ? r.data : []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [business.id]);
@@ -89,11 +89,11 @@ export function Competitors() {
     setSaving(true);
     try {
       if (editTarget) {
-        const { data } = await api.put(`/competitors/${editTarget.id}`, form);
+        const { data } = await api.put(`/api/competitors/${editTarget.id}`, form);
         setCompetitors((c) => c.map((x) => x.id === editTarget.id ? data : x));
         toast.success('Competitor updated');
       } else {
-        const { data } = await api.post('/competitors', { ...form, business_id: business.id });
+        const { data } = await api.post('/api/competitors', { ...form, business_id: business.id });
         setCompetitors((c) => [...c, data]);
         toast.success('Competitor added');
       }
@@ -107,7 +107,7 @@ export function Competitors() {
 
   async function handleDelete(id: string) {
     try {
-      await api.delete(`/competitors/${id}`);
+      await api.delete(`/api/competitors/${id}`);
       setCompetitors((c) => c.filter((comp) => comp.id !== id));
       setInsights([]);
     } catch {
@@ -121,7 +121,7 @@ export function Competitors() {
     setDiscovered([]);
     setAddedIds(new Set());
     try {
-      const { data } = await api.get(`/competitors/discover/${business.id}`);
+      const { data } = await api.get(`/api/competitors/discover/${business.id}`);
       setDiscovered(Array.isArray(data) ? data : []);
       if (!data.length) toast('No competitors found nearby', { icon: '🔍' });
     } catch (err: any) {
@@ -135,7 +135,7 @@ export function Competitors() {
   async function handleAddDiscovered(place: DiscoverResult) {
     setAdding(place.place_id);
     try {
-      const { data } = await api.post('/competitors', {
+      const { data } = await api.post('/api/competitors', {
         business_id: business.id,
         name: place.name,
         rating: place.rating,
@@ -156,7 +156,7 @@ export function Competitors() {
   async function handleAnalyze() {
     setAnalyzing(true);
     try {
-      const { data } = await api.post(`/competitors/analyze/${business.id}`);
+      const { data } = await api.post(`/api/competitors/analyze/${business.id}`);
       setInsights(Array.isArray(data.insights) ? data.insights : []);
     } catch (err: any) {
       toast.error(err?.response?.data?.error ?? 'Analysis failed');

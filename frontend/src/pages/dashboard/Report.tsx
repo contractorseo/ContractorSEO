@@ -56,7 +56,7 @@ export function Report() {
 
   useEffect(() => {
     if (!isAgency) { setLoading(false); return; }
-    api.get(`/reports/${business.id}`)
+    api.get(`/api/reports/${business.id}`)
       .then((r) => setReport(r.data))
       .catch(() => toast.error('Failed to load report'))
       .finally(() => setLoading(false));
@@ -65,7 +65,7 @@ export function Report() {
   async function handleShare() {
     setSharing(true);
     try {
-      const { data } = await api.post(`/reports/share/${business.id}`);
+      const { data } = await api.post(`/api/reports/share/${business.id}`);
       setShareToken(data.token);
     } catch {
       toast.error('Failed to create share link');

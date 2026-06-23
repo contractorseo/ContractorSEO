@@ -42,7 +42,7 @@ export function Signup() {
     // Auto-confirm via the backend so the trial flow works without inbox verification.
     if (!data.session) {
       try {
-        await api.post('/auth/confirm-email', { userId: data.user.id });
+        await api.post('/api/auth/confirm-email', { userId: data.user.id });
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) throw signInError;
       } catch {

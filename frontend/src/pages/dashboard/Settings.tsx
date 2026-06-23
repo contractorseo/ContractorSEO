@@ -61,7 +61,7 @@ export function Settings() {
 
   // Load WordPress connection
   useEffect(() => {
-    api.get(`/cms/${business.id}`)
+    api.get(`/api/cms/${business.id}`)
       .then(({ data }) => setWpConnection(Array.isArray(data) && data.length > 0 ? data[0] : null))
       .catch(() => {})
       .finally(() => setWpLoading(false));
@@ -74,7 +74,7 @@ export function Settings() {
     }
     setWpConnecting(true);
     try {
-      const { data } = await api.post('/cms/connect', {
+      const { data } = await api.post('/api/cms/connect', {
         businessId: business.id,
         siteUrl: wpForm.siteUrl.trim(),
         username: wpForm.username.trim(),
@@ -94,7 +94,7 @@ export function Settings() {
     if (!wpConnection) return;
     setWpDisconnecting(true);
     try {
-      await api.delete(`/cms/${wpConnection.id}`);
+      await api.delete(`/api/cms/${wpConnection.id}`);
       setWpConnection(null);
       toast.success('WordPress disconnected');
     } catch {
@@ -131,7 +131,7 @@ export function Settings() {
   async function handleConnectGBP() {
     setGbpConnecting(true);
     try {
-      const { data } = await api.get(`/gbp/auth-url?businessId=${business.id}`);
+      const { data } = await api.get(`/api/gbp/auth-url?businessId=${business.id}`);
       window.location.href = data.url;
     } catch (err: any) {
       toast.error(err?.response?.data?.error ?? 'Failed to start GBP connection');
@@ -142,7 +142,7 @@ export function Settings() {
   async function handleSelectLocation(location: GBPLocation) {
     setSavingLocation(location.name);
     try {
-      await api.post(`/gbp/connect/${business.id}`, {
+      await api.post(`/api/gbp/connect/${business.id}`, {
         locationName: location.name,
         locationTitle: location.title,
       });
@@ -159,7 +159,7 @@ export function Settings() {
   async function handleDisconnectGBP() {
     setGbpDisconnecting(true);
     try {
-      await api.delete(`/gbp/disconnect/${business.id}`);
+      await api.delete(`/api/gbp/disconnect/${business.id}`);
       setGbpConnected(false);
       toast.success('GBP disconnected');
     } catch {
@@ -172,7 +172,7 @@ export function Settings() {
   async function handleSaveBusiness() {
     setSavingBiz(true);
     try {
-      await api.put(`/businesses/${business.id}`, bizForm);
+      await api.put(`/api/businesses/${business.id}`, bizForm);
       toast.success('Business updated');
     } catch {
       toast.error('Failed to update');
@@ -184,7 +184,7 @@ export function Settings() {
   async function handleCheckout(plan: string) {
     setCheckoutLoading(plan);
     try {
-      const { data } = await api.post('/stripe/checkout', { plan });
+      const { data } = await api.post('/api/stripe/checkout', { plan });
       window.location.href = data.url;
     } catch {
       toast.error('Failed to start checkout');
@@ -195,7 +195,7 @@ export function Settings() {
   async function handlePortal() {
     setPortalLoading(true);
     try {
-      const { data } = await api.post('/stripe/portal');
+      const { data } = await api.post('/api/stripe/portal');
       window.location.href = data.url;
     } catch {
       toast.error('No billing account found');

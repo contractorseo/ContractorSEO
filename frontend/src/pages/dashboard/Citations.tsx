@@ -46,10 +46,10 @@ export function Citations() {
   const [issueText, setIssueText] = useState('');
 
   useEffect(() => {
-    api.get(`/citations/${business.id}`).then(async (r) => {
+    api.get(`/api/citations/${business.id}`).then(async (r) => {
       const rows = Array.isArray(r.data) ? r.data : [];
       if (rows.length === 0) {
-        const { data: seeded } = await api.post(`/citations/seed/${business.id}`);
+        const { data: seeded } = await api.post(`/api/citations/seed/${business.id}`);
         setListings(Array.isArray(seeded) ? seeded : []);
       } else {
         setListings(rows);
@@ -61,7 +61,7 @@ export function Citations() {
   async function updateStatus(id: string, status: NapListing['status'], issue?: string) {
     setUpdating(id);
     try {
-      const { data } = await api.put(`/citations/${id}`, { status, issue: issue ?? null });
+      const { data } = await api.put(`/api/citations/${id}`, { status, issue: issue ?? null });
       setListings((l) => l.map((listing) => listing.id === id ? data : listing));
     } catch {
       toast.error('Failed to update');

@@ -66,9 +66,9 @@ export function Overview() {
   useEffect(() => {
     if (!business) return;
     Promise.all([
-      api.get(`/posts/${business.id}`),
-      api.get(`/reviews/${business.id}`),
-      api.get(`/keywords/${business.id}`),
+      api.get(`/api/posts/${business.id}`),
+      api.get(`/api/reviews/${business.id}`),
+      api.get(`/api/keywords/${business.id}`),
     ]).then(([p, r, k]) => {
       setPosts(Array.isArray(p.data) ? p.data : []);
       setReviews(Array.isArray(r.data) ? r.data : []);

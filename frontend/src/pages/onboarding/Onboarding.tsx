@@ -49,8 +49,8 @@ export function Onboarding() {
 
     setSaving(true);
     try {
-      const { data: biz } = await api.post('/businesses', form);
-      api.post(`/citations/seed/${biz.id}`).catch(() => {});
+      const { data: biz } = await api.post('/api/businesses', form);
+      api.post(`/api/citations/seed/${biz.id}`).catch(() => {});
       toast.success('Business set up! Welcome to ContractorSEO.');
 
       // Poll until the new row is visible to the Supabase client before navigating.

@@ -27,7 +27,7 @@ export function Reviews() {
   const [requestForm, setRequestForm] = useState({ customerName: '', phone: '', jobType: '' });
 
   useEffect(() => {
-    api.get(`/reviews/${business.id}`)
+    api.get(`/api/reviews/${business.id}`)
       .then((r) => { setReviews(Array.isArray(r.data) ? r.data : []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [business.id]);
@@ -42,7 +42,7 @@ export function Reviews() {
     }
     setSendingRequest(true);
     try {
-      await api.post('/reviews/request', {
+      await api.post('/api/reviews/request', {
         businessId: business.id,
         customerName: requestForm.customerName,
         phone: requestForm.phone.replace(/\D/g, '').replace(/^(\d{3})(\d{3})(\d{4})$/, '+1$1$2$3'),
@@ -64,7 +64,7 @@ export function Reviews() {
   async function handleGenerateResponse(review: Review) {
     setGeneratingResponse(true);
     try {
-      const { data } = await api.post('/reviews/respond', {
+      const { data } = await api.post('/api/reviews/respond', {
         reviewId: review.id,
         businessId: business.id,
       });
@@ -80,7 +80,7 @@ export function Reviews() {
     if (!showRespond || !aiResponse) return;
     setSavingResponse(true);
     try {
-      const { data } = await api.put(`/reviews/${showRespond.id}/response`, { response_text: aiResponse });
+      const { data } = await api.put(`/api/reviews/${showRespond.id}/response`, { response_text: aiResponse });
       setReviews((r) => r.map((rev) => rev.id === showRespond.id ? data : rev));
       toast.success('Response saved!');
       setShowRespond(null);

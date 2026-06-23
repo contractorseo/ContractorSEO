@@ -47,7 +47,7 @@ function RankEditor({ keyword, onSave }: { keyword: Keyword; onSave: (id: string
     }
     setSaving(true);
     try {
-      await api.put(`/keywords/${keyword.id}/rank`, { current_rank: rank });
+      await api.put(`/api/keywords/${keyword.id}/rank`, { current_rank: rank });
       onSave(keyword.id, rank);
       setEditing(false);
     } catch {
@@ -102,7 +102,7 @@ export function Keywords() {
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    api.get(`/keywords/${business.id}`)
+    api.get(`/api/keywords/${business.id}`)
       .then((r) => { setKeywords(Array.isArray(r.data) ? r.data : []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [business.id]);
@@ -122,7 +122,7 @@ export function Keywords() {
     if (!newKeyword.trim()) return;
     setAdding(true);
     try {
-      const { data } = await api.post(`/keywords/${business.id}`, { keyword: newKeyword.trim() });
+      const { data } = await api.post(`/api/keywords/${business.id}`, { keyword: newKeyword.trim() });
       setKeywords((k) => [...k, data]);
       setNewKeyword('');
       setShowAdd(false);
@@ -137,7 +137,7 @@ export function Keywords() {
   async function handleGetSuggestions() {
     setSuggesting(true);
     try {
-      const { data } = await api.post('/keywords/suggest', { businessId: business.id });
+      const { data } = await api.post('/api/keywords/suggest', { businessId: business.id });
       setSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
     } catch {
       toast.error('Failed to get suggestions');
@@ -148,7 +148,7 @@ export function Keywords() {
 
   async function addSuggestion(kw: string) {
     try {
-      const { data } = await api.post(`/keywords/${business.id}`, { keyword: kw });
+      const { data } = await api.post(`/api/keywords/${business.id}`, { keyword: kw });
       setKeywords((k) => [...k, data]);
       setSuggestions((s) => s.filter((x) => x !== kw));
       toast.success(`Added: ${kw}`);
@@ -159,7 +159,7 @@ export function Keywords() {
 
   async function handleDelete(id: string) {
     try {
-      await api.delete(`/keywords/${id}`);
+      await api.delete(`/api/keywords/${id}`);
       setKeywords((k) => k.filter((kw) => kw.id !== id));
       toast.success('Removed');
     } catch {

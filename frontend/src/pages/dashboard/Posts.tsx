@@ -43,7 +43,7 @@ export function Posts() {
   });
 
   useEffect(() => {
-    api.get(`/posts/${business.id}`)
+    api.get(`/api/posts/${business.id}`)
       .then((r) => { setPosts(Array.isArray(r.data) ? r.data : []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [business.id]);
@@ -51,7 +51,7 @@ export function Posts() {
   async function handleGenerate() {
     setGenerating(true);
     try {
-      const { data } = await api.post('/posts/generate', {
+      const { data } = await api.post('/api/posts/generate', {
         businessId: business.id,
         postType: form.type,
         jobType: form.jobType || undefined,
@@ -70,7 +70,7 @@ export function Posts() {
     if (!form.title || !form.content) { toast.error('Title and content are required'); return; }
     setSaving(true);
     try {
-      const { data } = await api.post('/posts', {
+      const { data } = await api.post('/api/posts', {
         business_id: business.id,
         type: form.type,
         title: form.title,
@@ -96,7 +96,7 @@ export function Posts() {
     }
     setPublishingGbp(post.id);
     try {
-      await api.post(`/gbp/publish/${business.id}/${post.id}`);
+      await api.post(`/api/gbp/publish/${business.id}/${post.id}`);
       setPosts((p) => p.map((x) =>
         x.id === post.id ? { ...x, status: 'published', published_at: new Date().toISOString() } : x
       ));
@@ -111,7 +111,7 @@ export function Posts() {
   async function handleDelete(id: string) {
     if (!confirm('Delete this post?')) return;
     try {
-      await api.delete(`/posts/${id}`);
+      await api.delete(`/api/posts/${id}`);
       setPosts((p) => p.filter((post) => post.id !== id));
       toast.success('Post deleted');
     } catch {
