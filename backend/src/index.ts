@@ -24,8 +24,18 @@ const PORT = process.env.PORT ?? 4000;
 
 app.use(helmet());
 app.use(morgan('dev'));
+const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:5173')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // allow non-browser requests (curl, Render health checks, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization'],
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
