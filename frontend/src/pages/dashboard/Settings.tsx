@@ -53,6 +53,7 @@ export function Settings() {
 
   // GBP state
   const [gbpConnected, setGbpConnected] = useState(business.gbp_connected);
+  const [gbpPending, setGbpPending] = useState(false);
   const [gbpConnecting, setGbpConnecting] = useState(false);
   const [gbpDisconnecting, setGbpDisconnecting] = useState(false);
   const [locationModal, setLocationModal] = useState(false);
@@ -120,6 +121,12 @@ export function Settings() {
     } else if (gbpParam === 'connected') {
       setGbpConnected(true);
       toast.success('Google Business Profile connected!');
+    } else if (gbpParam === 'pending') {
+      setGbpPending(true);
+      toast.success(
+        'Google account authorized. Awaiting API access approval from Google — we\'ll be able to publish posts once it\'s activated.',
+        { duration: 7000 }
+      );
     } else if (gbpParam === 'error') {
       toast.error(`GBP error: ${searchParams.get('msg') ?? 'unknown'}`);
     }
@@ -274,8 +281,8 @@ export function Settings() {
           <CardTitle className="flex items-center gap-2">
             <MapPin size={18} /> Google Business Profile
           </CardTitle>
-          <Badge variant={gbpConnected ? 'success' : 'gray'}>
-            {gbpConnected ? 'Connected' : 'Not connected'}
+          <Badge variant={gbpConnected ? 'success' : gbpPending ? 'warning' : 'gray'}>
+            {gbpConnected ? 'Connected' : gbpPending ? 'Awaiting activation' : 'Not connected'}
           </Badge>
         </CardHeader>
 
@@ -288,6 +295,14 @@ export function Settings() {
             <Button variant="outline" onClick={handleDisconnectGBP} loading={gbpDisconnecting}>
               <Unlink size={14} /> Disconnect
             </Button>
+          </div>
+        ) : gbpPending ? (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+            <p className="font-medium text-amber-900">Connected — awaiting Google API activation</p>
+            <p className="text-sm text-amber-800">
+              Your Google account was authorized successfully. RankrSEO's API access is pending approval from Google.
+              Post publishing will activate automatically once approved. No action needed on your end.
+            </p>
           </div>
         ) : (
           <div className="p-4 bg-gray-50 rounded-xl space-y-3">
