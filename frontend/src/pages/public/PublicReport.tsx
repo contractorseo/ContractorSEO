@@ -157,7 +157,7 @@ export function PublicReport() {
         </div>
 
         <p className="text-xs text-gray-400 text-center">
-          Report generated {new Date(report.generatedAt).toLocaleString()} · Powered by ContractorSEO
+          Report generated {new Date(report.generatedAt).toLocaleString()} · Powered by RankrSEO
         </p>
       </div>
     </div>

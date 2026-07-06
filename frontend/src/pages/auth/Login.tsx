@@ -39,7 +39,7 @@ export function Login() {
             <Zap size={24} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">Welcome back</h1>
-          <p className="text-gray-400 mt-1">Sign in to ContractorSEO</p>
+          <p className="text-gray-400 mt-1">Sign in to RankrSEO</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">

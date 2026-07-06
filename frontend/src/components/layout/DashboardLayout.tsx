@@ -76,7 +76,7 @@ export function DashboardLayout() {
             <div className="w-6 h-6 rounded-md bg-brand-500 flex items-center justify-center">
               <Zap size={12} className="text-white" />
             </div>
-            <span className="font-bold text-sm text-gray-900">ContractorSEO</span>
+            <span className="font-bold text-sm text-gray-900">RankrSEO</span>
           </div>
         </header>
         <main className="flex-1">

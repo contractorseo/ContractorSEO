@@ -51,7 +51,7 @@ export function Onboarding() {
     try {
       const { data: biz } = await api.post('/api/businesses', form);
       api.post(`/api/citations/seed/${biz.id}`).catch(() => {});
-      toast.success('Business set up! Welcome to ContractorSEO.');
+      toast.success('Business set up! Welcome to RankrSEO.');
 
       // Poll until the new row is visible to the Supabase client before navigating.
       // On slow mobile connections the DB write may not be readable yet, which causes
@@ -90,7 +90,7 @@ export function Onboarding() {
             <div className="w-7 h-7 rounded-lg bg-brand-500 flex items-center justify-center">
               <Zap size={14} />
             </div>
-            <span className="font-bold">ContractorSEO</span>
+            <span className="font-bold">RankrSEO</span>
           </div>
           <p className="text-gray-400 text-sm">Step {step} of {STEPS.length}</p>
           <div className="mt-3 h-1.5 bg-gray-800 rounded-full overflow-hidden">

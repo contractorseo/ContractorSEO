@@ -59,7 +59,7 @@ export function Sidebar({ user, business, businesses, onSwitchBusiness, isOpen, 
           <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
             <Zap size={16} className="text-white" />
           </div>
-          <p className="text-sm font-bold tracking-tight">ContractorSEO</p>
+          <p className="text-sm font-bold tracking-tight">RankrSEO</p>
         </div>
         <button
           onClick={onClose}

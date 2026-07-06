@@ -83,7 +83,7 @@ export function Signup() {
             <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
               <Zap size={16} />
             </div>
-            <span className="font-bold text-lg">ContractorSEO</span>
+            <span className="font-bold text-lg">RankrSEO</span>
           </div>
           <h1 className="text-3xl font-bold mb-3">Dominate local search in your city</h1>
           <p className="text-gray-400 mb-8">The only SEO platform built exclusively for contractors.</p>

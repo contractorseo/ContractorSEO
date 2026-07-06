@@ -611,7 +611,7 @@ export function ContentStudio() {
             )}
             {!cmsConnection && (
               <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
-                No WordPress connected — article will be marked published in ContractorSEO when due. Connect a site in Settings to auto-publish.
+                No WordPress connected — article will be marked published in RankrSEO when due. Connect a site in Settings to auto-publish.
               </p>
             )}
             <Button className="w-full" onClick={handleScheduleSubmit} loading={scheduling} disabled={!scheduleDate}>
