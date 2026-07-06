@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import toast from 'react-hot-toast';
 import { Zap } from 'lucide-react';
+import { PublicFooter } from '@/components/layout/PublicFooter';
 
 export function Login() {
   const navigate = useNavigate();
@@ -76,6 +77,7 @@ export function Login() {
             <Link to="/signup" className="text-brand-600 font-medium hover:text-brand-700">Start free trial</Link>
           </p>
         </div>
+        <PublicFooter />
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import toast from 'react-hot-toast';
 import { Zap, ArrowLeft } from 'lucide-react';
+import { PublicFooter } from '@/components/layout/PublicFooter';
 
 export function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -56,6 +57,7 @@ export function ForgotPassword() {
             </Link>
           </div>
         </div>
+        <PublicFooter />
       </div>
     </div>
   );

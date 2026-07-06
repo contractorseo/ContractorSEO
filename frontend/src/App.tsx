@@ -18,6 +18,8 @@ import { Report } from '@/pages/dashboard/Report';
 import { ContentStudio } from '@/pages/dashboard/ContentStudio';
 import { AIVisibility } from '@/pages/dashboard/AIVisibility';
 import { PublicReport } from '@/pages/public/PublicReport';
+import { PrivacyPolicy } from '@/pages/legal/PrivacyPolicy';
+import { TermsOfService } from '@/pages/legal/TermsOfService';
 import { NotFound } from '@/pages/NotFound';
 
 export default function App() {
@@ -46,6 +48,8 @@ export default function App() {
           </Route>
 
           <Route path="/report/:token" element={<PublicReport />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

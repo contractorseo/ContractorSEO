@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import toast from 'react-hot-toast';
 import { Zap, CheckCircle } from 'lucide-react';
+import { PublicFooter } from '@/components/layout/PublicFooter';
 
 const PERKS = [
   '14-day free trial — no credit card',
@@ -131,13 +132,17 @@ export function Signup() {
           </form>
 
           <p className="text-center text-xs text-gray-400 mt-4">
-            By signing up you agree to our Terms of Service and Privacy Policy.
+            By signing up you agree to our{' '}
+            <Link to="/terms" className="underline hover:text-gray-600">Terms of Service</Link>
+            {' '}and{' '}
+            <Link to="/privacy" className="underline hover:text-gray-600">Privacy Policy</Link>.
           </p>
           <p className="text-center text-sm text-gray-500 mt-3">
             Already have an account?{' '}
             <Link to="/login" className="text-brand-600 font-medium hover:text-brand-700">Sign in</Link>
           </p>
         </div>
+        <PublicFooter />
       </div>
     </div>
   );
