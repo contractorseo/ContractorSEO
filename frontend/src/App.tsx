@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -19,6 +19,7 @@ import { ContentStudio } from '@/pages/dashboard/ContentStudio';
 import { AIVisibility } from '@/pages/dashboard/AIVisibility';
 import { PublicReport } from '@/pages/public/PublicReport';
 import { Pricing } from '@/pages/public/Pricing';
+import { Landing } from '@/pages/public/Landing';
 import { PrivacyPolicy } from '@/pages/legal/PrivacyPolicy';
 import { TermsOfService } from '@/pages/legal/TermsOfService';
 import { NotFound } from '@/pages/NotFound';
@@ -29,7 +30,7 @@ export default function App() {
       <BrowserRouter>
         <Toaster position="top-right" toastOptions={{ duration: 3500 }} />
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
