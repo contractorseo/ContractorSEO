@@ -10,7 +10,7 @@ import { getDaysLeft, formatDate } from '@/lib/utils';
 import api from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
-import { CreditCard, Building2, CheckCircle, Shield, MapPin, ExternalLink, Unlink, Globe } from 'lucide-react';
+import { CreditCard, Building2, CheckCircle, Shield, MapPin, ExternalLink, Unlink, Globe, Code2, Copy, Check } from 'lucide-react';
 import type { CmsConnection } from '@/types';
 
 interface Context { user: User; business: Business }
@@ -59,6 +59,17 @@ export function Settings() {
   const [locationModal, setLocationModal] = useState(false);
   const [pendingLocations, setPendingLocations] = useState<GBPLocation[]>([]);
   const [savingLocation, setSavingLocation] = useState<string | null>(null);
+
+  // Schema state
+  type SchemaStatus = 'none' | 'installed_wp' | 'installed_manual';
+  const [schemaStatus, setSchemaStatus] = useState<SchemaStatus>('none');
+  const [schemaSnippet, setSchemaSnippet] = useState('');
+  const [schemaPreviewOpen, setSchemaPreviewOpen] = useState(false);
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const [schemaInstalling, setSchemaInstalling] = useState(false);
+  const [schemaMarkingInstalled, setSchemaMarkingInstalled] = useState(false);
+  const [schemaResetting, setSchemaResetting] = useState(false);
+  const [schemaCopied, setSchemaCopied] = useState(false);
 
   // Load WordPress connection
   useEffect(() => {
@@ -173,6 +184,78 @@ export function Settings() {
       toast.error('Failed to disconnect');
     } finally {
       setGbpDisconnecting(false);
+    }
+  }
+
+  // Load schema status (only for paid plans)
+  useEffect(() => {
+    if (user.plan === 'trial') return;
+    api.get(`/api/schema/${business.id}`)
+      .then(({ data }) => {
+        setSchemaStatus(data.status ?? 'none');
+        setSchemaSnippet(data.snippet ?? '');
+      })
+      .catch(() => {});
+  }, [business.id, user.plan]);
+
+  async function handleGenerateSchema() {
+    setSchemaLoading(true);
+    try {
+      const { data } = await api.get(`/api/schema/${business.id}`);
+      setSchemaSnippet(data.snippet ?? '');
+      setSchemaStatus(data.status ?? 'none');
+      setSchemaPreviewOpen(true);
+    } catch (err: any) {
+      toast.error(err.response?.data?.error ?? 'Failed to generate schema');
+    } finally {
+      setSchemaLoading(false);
+    }
+  }
+
+  async function handleCopySchema() {
+    await navigator.clipboard.writeText(schemaSnippet);
+    setSchemaCopied(true);
+    setTimeout(() => setSchemaCopied(false), 2000);
+  }
+
+  async function handleInstallSchemaWP() {
+    setSchemaInstalling(true);
+    try {
+      await api.post(`/api/schema/${business.id}/install-wp`);
+      setSchemaStatus('installed_wp');
+      setSchemaPreviewOpen(false);
+      toast.success('Schema injected into WordPress!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error ?? 'Failed to install schema to WordPress');
+    } finally {
+      setSchemaInstalling(false);
+    }
+  }
+
+  async function handleMarkSchemaInstalled() {
+    setSchemaMarkingInstalled(true);
+    try {
+      await api.post(`/api/schema/${business.id}/mark-installed`);
+      setSchemaStatus('installed_manual');
+      setSchemaPreviewOpen(false);
+      toast.success('Schema marked as installed');
+    } catch {
+      toast.error('Failed to update status');
+    } finally {
+      setSchemaMarkingInstalled(false);
+    }
+  }
+
+  async function handleResetSchema() {
+    setSchemaResetting(true);
+    try {
+      await api.delete(`/api/schema/${business.id}`);
+      setSchemaStatus('none');
+      toast.success('Schema status reset');
+    } catch {
+      toast.error('Failed to reset');
+    } finally {
+      setSchemaResetting(false);
     }
   }
 
@@ -389,6 +472,86 @@ export function Settings() {
           </div>
         )}
       </Card>
+
+      {/* Schema Markup */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Code2 size={18} /> Schema Markup
+          </CardTitle>
+          <Badge variant={schemaStatus === 'installed_wp' || schemaStatus === 'installed_manual' ? 'success' : 'gray'}>
+            {schemaStatus === 'installed_wp'
+              ? 'Saved to WordPress'
+              : schemaStatus === 'installed_manual'
+              ? 'Installed'
+              : 'Not installed'}
+          </Badge>
+        </CardHeader>
+
+        {user.plan === 'trial' ? (
+          <div className="p-4 bg-gray-50 rounded-xl text-center space-y-2">
+            <p className="text-sm text-gray-600 font-medium">Upgrade to generate structured data</p>
+            <p className="text-xs text-gray-400">
+              Schema markup adds LocalBusiness, Service, and FAQ structured data to your site — helping Google understand your business.
+            </p>
+            <Button size="sm" onClick={() => handleCheckout('growth')} loading={checkoutLoading === 'growth'}>
+              Upgrade to Growth
+            </Button>
+          </div>
+        ) : (
+          <div className="p-4 space-y-3">
+            <p className="text-sm text-gray-600">
+              Generate JSON-LD structured data (LocalBusiness + Service + FAQ) from your business info and inject it into your site.
+              This helps search engines surface your business in AI-powered results.
+            </p>
+            <div className="flex items-center gap-3">
+              <Button onClick={handleGenerateSchema} loading={schemaLoading} size="sm">
+                {schemaStatus === 'none' ? 'Generate Schema' : 'Preview & Update Schema'}
+              </Button>
+              {(schemaStatus === 'installed_wp' || schemaStatus === 'installed_manual') && (
+                <Button variant="outline" size="sm" onClick={handleResetSchema} loading={schemaResetting}>
+                  Reset
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Schema preview modal */}
+      <Modal open={schemaPreviewOpen} onClose={() => setSchemaPreviewOpen(false)} title="Schema Markup" size="lg">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Copy this code and paste it inside the <code className="bg-gray-100 px-1 rounded text-xs">&lt;head&gt;</code> of your site,
+            {wpConnection ? ' or click "Install to WordPress" to add it automatically.' : ' or add it to your WordPress theme.'}
+          </p>
+          <div className="relative">
+            <pre className="bg-gray-900 text-green-300 text-xs p-4 rounded-xl overflow-auto max-h-72 whitespace-pre-wrap break-all">
+              {schemaSnippet}
+            </pre>
+            <button
+              onClick={handleCopySchema}
+              className="absolute top-2 right-2 p-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+              title="Copy to clipboard"
+            >
+              {schemaCopied ? <Check size={14} className="text-green-400" /> : <Copy size={14} className="text-gray-300" />}
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-3 pt-1">
+            {wpConnection && wpConnection.status !== 'error' && (
+              <Button onClick={handleInstallSchemaWP} loading={schemaInstalling}>
+                Install to WordPress
+              </Button>
+            )}
+            <Button variant="outline" onClick={handleMarkSchemaInstalled} loading={schemaMarkingInstalled}>
+              I've added it manually
+            </Button>
+            <Button variant="outline" onClick={handleCopySchema}>
+              {schemaCopied ? 'Copied!' : 'Copy snippet'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Business info */}
       <Card>
