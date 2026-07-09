@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   Bot, Plus, Trash2, PlayCircle, CheckCircle2, XCircle,
-  AlertCircle, Loader2, Info,
+  AlertCircle, Loader2, Info, ChevronDown, ChevronUp,
+  ShieldAlert, TriangleAlert,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
@@ -10,6 +11,15 @@ import type { User, Business, AIVisibilityPrompt, AIVisibilityCheck } from '@/ty
 
 interface EngineStatus { openai: boolean; perplexity: boolean }
 interface Usage { used: number; limit: number; plan: string }
+
+interface DiagnosisItem {
+  factor: string;
+  severity: 'high' | 'medium';
+  title: string;
+  detail: string;
+  actionKey: string;
+  actionLabel: string;
+}
 
 // Per-prompt per-engine history, most recent first
 interface PromptGroup {
@@ -108,29 +118,37 @@ export function AIVisibility() {
   const [running, setRunning] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const [diagnosis, setDiagnosis] = useState<DiagnosisItem[]>([]);
+  const [diagnosisExpanded, setDiagnosisExpanded] = useState(true);
+
   const isTrial = user.plan === 'trial';
   const engineCount = (engines.openai ? 1 : 0) + (engines.perplexity ? 1 : 0);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [engRes, promptRes, checkRes, usageRes] = await Promise.all([
+      const requests: Promise<any>[] = [
         api.get('/api/ai-visibility/engines'),
         api.get(`/api/ai-visibility/${business.id}/prompts`),
         api.get(`/api/ai-visibility/${business.id}/results`),
         api.get(`/api/ai-visibility/${business.id}/usage`),
-      ]);
+      ];
+      if (user.plan !== 'trial') {
+        requests.push(api.get(`/api/ai-visibility/${business.id}/diagnose`));
+      }
+      const [engRes, promptRes, checkRes, usageRes, diagRes] = await Promise.all(requests);
       setEngines(engRes.data);
       setPrompts(promptRes.data);
       setChecks(checkRes.data);
       setUsage(usageRes.data);
+      if (diagRes) setDiagnosis(diagRes.data.items ?? []);
     } catch (err: any) {
       console.error('[AIVisibility] load failed — status:', err?.response?.status, 'url:', err?.config?.url, 'msg:', err?.message, err);
       toast.error('Failed to load AI Visibility data');
     } finally {
       setLoading(false);
     }
-  }, [business.id]);
+  }, [business.id, user.plan]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -171,13 +189,14 @@ export function AIVisibility() {
     try {
       const { data } = await api.post(`/api/ai-visibility/${business.id}/run`, {});
       toast.success(`${data.count} check${data.count !== 1 ? 's' : ''} completed`);
-      // Reload results and usage
-      const [checkRes, usageRes] = await Promise.all([
+      const [checkRes, usageRes, diagRes] = await Promise.all([
         api.get(`/api/ai-visibility/${business.id}/results`),
         api.get(`/api/ai-visibility/${business.id}/usage`),
+        api.get(`/api/ai-visibility/${business.id}/diagnose`),
       ]);
       setChecks(checkRes.data);
       setUsage(usageRes.data);
+      setDiagnosis(diagRes.data.items ?? []);
     } catch (err: any) {
       toast.error(err.response?.data?.error ?? 'Check failed');
     } finally {
@@ -189,6 +208,8 @@ export function AIVisibility() {
   const activeEngines = Object.entries(engines)
     .filter(([, v]) => v)
     .map(([k]) => k);
+
+  const hasFailingChecks = checks.some((c) => !c.mentioned);
 
   if (loading) {
     return (
@@ -279,6 +300,56 @@ export function AIVisibility() {
           </div>
         )}
       </div>
+
+      {/* Diagnosis card */}
+      {!isTrial && hasFailingChecks && diagnosis.length > 0 && (
+        <div className="bg-white rounded-xl border border-orange-200 overflow-hidden">
+          <button
+            onClick={() => setDiagnosisExpanded((e) => !e)}
+            className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-orange-50 transition-colors"
+          >
+            <div className="flex items-center gap-2.5">
+              <ShieldAlert size={17} className="text-orange-500 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Why you're not showing up</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {diagnosis.filter((i) => i.severity === 'high').length} high-priority issue{diagnosis.filter((i) => i.severity === 'high').length !== 1 ? 's' : ''},{' '}
+                  {diagnosis.filter((i) => i.severity === 'medium').length} medium
+                </p>
+              </div>
+            </div>
+            {diagnosisExpanded ? <ChevronUp size={15} className="text-gray-400" /> : <ChevronDown size={15} className="text-gray-400" />}
+          </button>
+
+          {diagnosisExpanded && (
+            <div className="divide-y divide-gray-100 border-t border-orange-100">
+              {diagnosis.map((item) => (
+                <div
+                  key={item.factor}
+                  className={`px-5 py-4 flex gap-4 items-start ${item.severity === 'high' ? 'bg-red-50' : 'bg-amber-50'}`}
+                >
+                  <div className="mt-0.5 shrink-0">
+                    {item.severity === 'high' ? (
+                      <XCircle size={16} className="text-red-500" />
+                    ) : (
+                      <TriangleAlert size={16} className="text-amber-500" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-xs font-bold uppercase tracking-wide ${item.severity === 'high' ? 'text-red-600' : 'text-amber-600'}`}>
+                        {item.severity}
+                      </span>
+                      <p className="text-sm font-medium text-gray-900">{item.title}</p>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">{item.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Prompts */}
       {!isTrial && (
