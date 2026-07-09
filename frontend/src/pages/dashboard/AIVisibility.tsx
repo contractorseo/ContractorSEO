@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   Bot, Plus, Trash2, PlayCircle, CheckCircle2, XCircle,
   AlertCircle, Loader2, Info, ChevronDown, ChevronUp,
@@ -108,6 +108,7 @@ const SUGGESTED = [
 
 export function AIVisibility() {
   const { user, business } = useOutletContext<{ user: User; business: Business }>();
+  const navigate = useNavigate();
 
   const [engines, setEngines] = useState<EngineStatus>({ openai: false, perplexity: false });
   const [prompts, setPrompts] = useState<AIVisibilityPrompt[]>([]);
@@ -120,6 +121,7 @@ export function AIVisibility() {
 
   const [diagnosis, setDiagnosis] = useState<DiagnosisItem[]>([]);
   const [diagnosisExpanded, setDiagnosisExpanded] = useState(true);
+  const [generatingFaq, setGeneratingFaq] = useState(false);
 
   const isTrial = user.plan === 'trial';
   const engineCount = (engines.openai ? 1 : 0) + (engines.perplexity ? 1 : 0);
@@ -201,6 +203,45 @@ export function AIVisibility() {
       toast.error(err.response?.data?.error ?? 'Check failed');
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function handleDiagnosisAction(item: DiagnosisItem) {
+    switch (item.actionKey) {
+      case 'install_schema':
+      case 'connect_gbp':
+        navigate('/dashboard/settings');
+        break;
+      case 'citations':
+        navigate('/dashboard/citations');
+        break;
+      case 'schedule_post':
+        navigate('/dashboard/posts');
+        break;
+      case 'request_reviews':
+        navigate('/dashboard/reviews');
+        break;
+      case 'generate_content': {
+        const failingQueries = [...new Set(checks.filter((c) => !c.mentioned).map((c) => c.prompt))].slice(0, 5);
+        if (failingQueries.length === 0) {
+          toast.error('Run a check first to identify failing queries');
+          return;
+        }
+        setGeneratingFaq(true);
+        try {
+          await api.post('/api/articles/generate-faq', {
+            businessId: business.id,
+            queries: failingQueries,
+          });
+          toast.success('FAQ draft created — opening Content Studio');
+          navigate('/dashboard/content-studio');
+        } catch (err: any) {
+          toast.error(err.response?.data?.error ?? 'Failed to generate content');
+        } finally {
+          setGeneratingFaq(false);
+        }
+        break;
+      }
     }
   }
 
@@ -343,6 +384,21 @@ export function AIVisibility() {
                       <p className="text-sm font-medium text-gray-900">{item.title}</p>
                     </div>
                     <p className="text-xs text-gray-600 mt-1 leading-relaxed">{item.detail}</p>
+                    <button
+                      onClick={() => handleDiagnosisAction(item)}
+                      disabled={item.actionKey === 'generate_content' && generatingFaq}
+                      className={`mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        item.severity === 'high'
+                          ? 'bg-red-100 hover:bg-red-200 text-red-700'
+                          : 'bg-amber-100 hover:bg-amber-200 text-amber-700'
+                      }`}
+                    >
+                      {item.actionKey === 'generate_content' && generatingFaq ? (
+                        <><Loader2 size={11} className="animate-spin" /> Generating…</>
+                      ) : (
+                        item.actionLabel
+                      )}
+                    </button>
                   </div>
                 </div>
               ))}
