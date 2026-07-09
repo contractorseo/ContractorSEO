@@ -3,7 +3,8 @@ import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   Bot, Plus, Trash2, PlayCircle, CheckCircle2, XCircle,
   AlertCircle, Loader2, Info, ChevronDown, ChevronUp,
-  ShieldAlert, TriangleAlert,
+  ShieldAlert, TriangleAlert, TrendingUp, TrendingDown,
+  FileText, MapPin, Code2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
@@ -19,6 +20,30 @@ interface DiagnosisItem {
   detail: string;
   actionKey: string;
   actionLabel: string;
+}
+
+interface Milestone {
+  date: string;
+  label: string;
+  type: 'schema' | 'content' | 'gbp_post';
+}
+
+interface PromptTimeline {
+  template: string;
+  resolved: string;
+  checks: Array<{ engine: string; mentioned: boolean; checked_at: string }>;
+}
+
+interface TimelineData {
+  prompts: PromptTimeline[];
+  milestones: Milestone[];
+  summary: {
+    totalChecks: number;
+    mentionedTotal: number;
+    mentionedBeforeActions: number | null;
+    mentionedAfterActions: number | null;
+    firstActionDate: string | null;
+  };
 }
 
 // Per-prompt per-engine history, most recent first
@@ -123,6 +148,9 @@ export function AIVisibility() {
   const [diagnosisExpanded, setDiagnosisExpanded] = useState(true);
   const [generatingFaq, setGeneratingFaq] = useState(false);
 
+  const [timeline, setTimeline] = useState<TimelineData | null>(null);
+  const [timelineExpanded, setTimelineExpanded] = useState(true);
+
   const isTrial = user.plan === 'trial';
   const engineCount = (engines.openai ? 1 : 0) + (engines.perplexity ? 1 : 0);
 
@@ -137,13 +165,15 @@ export function AIVisibility() {
       ];
       if (user.plan !== 'trial') {
         requests.push(api.get(`/api/ai-visibility/${business.id}/diagnose`));
+        requests.push(api.get(`/api/ai-visibility/${business.id}/timeline`));
       }
-      const [engRes, promptRes, checkRes, usageRes, diagRes] = await Promise.all(requests);
+      const [engRes, promptRes, checkRes, usageRes, diagRes, timelineRes] = await Promise.all(requests);
       setEngines(engRes.data);
       setPrompts(promptRes.data);
       setChecks(checkRes.data);
       setUsage(usageRes.data);
       if (diagRes) setDiagnosis(diagRes.data.items ?? []);
+      if (timelineRes) setTimeline(timelineRes.data);
     } catch (err: any) {
       console.error('[AIVisibility] load failed — status:', err?.response?.status, 'url:', err?.config?.url, 'msg:', err?.message, err);
       toast.error('Failed to load AI Visibility data');
@@ -191,14 +221,16 @@ export function AIVisibility() {
     try {
       const { data } = await api.post(`/api/ai-visibility/${business.id}/run`, {});
       toast.success(`${data.count} check${data.count !== 1 ? 's' : ''} completed`);
-      const [checkRes, usageRes, diagRes] = await Promise.all([
+      const [checkRes, usageRes, diagRes, timelineRes] = await Promise.all([
         api.get(`/api/ai-visibility/${business.id}/results`),
         api.get(`/api/ai-visibility/${business.id}/usage`),
         api.get(`/api/ai-visibility/${business.id}/diagnose`),
+        api.get(`/api/ai-visibility/${business.id}/timeline`),
       ]);
       setChecks(checkRes.data);
       setUsage(usageRes.data);
       setDiagnosis(diagRes.data.items ?? []);
+      setTimeline(timelineRes.data);
     } catch (err: any) {
       toast.error(err.response?.data?.error ?? 'Check failed');
     } finally {
@@ -516,6 +548,168 @@ export function AIVisibility() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Trend & Timeline */}
+      {!isTrial && timeline && timeline.summary.totalChecks > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <button
+            onClick={() => setTimelineExpanded((e) => !e)}
+            className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-2.5">
+              <TrendingUp size={17} className="text-brand-600 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Trend &amp; Timeline</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {timeline.summary.mentionedTotal} of {timeline.summary.totalChecks} checks cited across all engines
+                </p>
+              </div>
+            </div>
+            {timelineExpanded ? <ChevronUp size={15} className="text-gray-400" /> : <ChevronDown size={15} className="text-gray-400" />}
+          </button>
+
+          {timelineExpanded && (
+            <div className="border-t border-gray-100 divide-y divide-gray-100">
+
+              {/* Before / after hero stat */}
+              {timeline.summary.firstActionDate &&
+                timeline.summary.mentionedBeforeActions !== null &&
+                timeline.summary.mentionedAfterActions !== null && (
+                <div className="px-5 py-5">
+                  <div className="flex items-center gap-6 flex-wrap">
+                    <div className="text-center">
+                      <p className="text-4xl font-bold text-gray-300">{timeline.summary.mentionedBeforeActions}%</p>
+                      <p className="text-xs text-gray-400 mt-1">cited before fixes</p>
+                    </div>
+                    <div className="text-gray-300 text-xl font-light">→</div>
+                    <div className="text-center">
+                      <p className={`text-4xl font-bold ${timeline.summary.mentionedAfterActions > (timeline.summary.mentionedBeforeActions ?? 0) ? 'text-green-600' : 'text-gray-600'}`}>
+                        {timeline.summary.mentionedAfterActions}%
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">cited after fixes</p>
+                    </div>
+                    {timeline.summary.mentionedAfterActions > (timeline.summary.mentionedBeforeActions ?? 0) ? (
+                      <div className="ml-auto flex items-center gap-1.5 text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full text-sm font-semibold">
+                        <TrendingUp size={14} />
+                        +{timeline.summary.mentionedAfterActions - (timeline.summary.mentionedBeforeActions ?? 0)}pp
+                      </div>
+                    ) : (
+                      <p className="ml-auto text-xs text-gray-400">Keep applying fixes — improvement takes a few check cycles</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Milestone list */}
+              {timeline.milestones.length > 0 && (
+                <div className="px-5 py-4">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">What changed</p>
+                  <div className="space-y-2.5">
+                    {timeline.milestones.map((m, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                          m.type === 'schema' ? 'bg-purple-100 text-purple-600'
+                          : m.type === 'content' ? 'bg-blue-100 text-blue-600'
+                          : 'bg-green-100 text-green-600'
+                        }`}>
+                          {m.type === 'schema' ? <Code2 size={11} /> : m.type === 'content' ? <FileText size={11} /> : <MapPin size={11} />}
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-700 leading-snug">{m.label}</p>
+                          <p className="text-xs text-gray-400">
+                            {new Date(m.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Per-prompt dot timelines */}
+              {timeline.prompts.length > 0 && (
+                <div className="px-5 py-4">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Per-query history</p>
+                  <div className="space-y-5">
+                    {timeline.prompts.map((p, i) => {
+                      // Deduplicate by checked_at: green wins if any engine mentioned
+                      const runMap = new Map<string, boolean>();
+                      for (const c of p.checks) {
+                        if (!runMap.has(c.checked_at)) runMap.set(c.checked_at, c.mentioned);
+                        else if (c.mentioned) runMap.set(c.checked_at, true);
+                      }
+                      const runs = [...runMap.entries()].map(([date, mentioned]) => ({ date, mentioned }));
+                      const splitIdx = timeline.summary.firstActionDate
+                        ? runs.findIndex((r) => r.date >= timeline.summary.firstActionDate!)
+                        : -1;
+                      const beforeRuns = splitIdx > 0 ? runs.slice(0, splitIdx) : (splitIdx === 0 ? [] : runs);
+                      const afterRuns = splitIdx >= 0 ? runs.slice(splitIdx) : [];
+                      const showSplit = splitIdx > 0 && afterRuns.length > 0;
+
+                      return (
+                        <div key={i}>
+                          <p className="text-xs text-gray-600 font-medium mb-1.5">{p.resolved}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {showSplit ? (
+                              <>
+                                <div className="flex items-center gap-0.5">
+                                  {beforeRuns.map((r, j) => (
+                                    <span
+                                      key={j}
+                                      title={`${new Date(r.date).toLocaleDateString()} — ${r.mentioned ? 'cited' : 'not cited'} (before fixes)`}
+                                      className={`w-3 h-3 rounded-full inline-block opacity-40 ${r.mentioned ? 'bg-green-500' : 'bg-red-400'}`}
+                                    />
+                                  ))}
+                                  <span className="text-xs text-gray-400 ml-1">
+                                    {beforeRuns.filter((r) => r.mentioned).length}/{beforeRuns.length}
+                                  </span>
+                                </div>
+                                <span className="text-brand-400 text-sm font-light">→</span>
+                                <div className="flex items-center gap-0.5">
+                                  {afterRuns.map((r, j) => (
+                                    <span
+                                      key={j}
+                                      title={`${new Date(r.date).toLocaleDateString()} — ${r.mentioned ? 'cited' : 'not cited'} (after fixes)`}
+                                      className={`w-3 h-3 rounded-full inline-block ${r.mentioned ? 'bg-green-500' : 'bg-red-400'}`}
+                                    />
+                                  ))}
+                                  <span className={`text-xs ml-1 font-medium ${afterRuns.filter((r) => r.mentioned).length > beforeRuns.filter((r) => r.mentioned).length / Math.max(beforeRuns.length, 1) * afterRuns.length ? 'text-green-600' : 'text-gray-500'}`}>
+                                    {afterRuns.filter((r) => r.mentioned).length}/{afterRuns.length}
+                                  </span>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="flex items-center gap-0.5 flex-wrap">
+                                {runs.map((r, j) => (
+                                  <span
+                                    key={j}
+                                    title={`${new Date(r.date).toLocaleDateString()} — ${r.mentioned ? 'cited' : 'not cited'}`}
+                                    className={`w-3 h-3 rounded-full inline-block ${r.mentioned ? 'bg-green-500' : 'bg-red-400'}`}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center gap-3 mt-5 text-xs text-gray-400">
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" /> cited</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" /> not cited</span>
+                    {timeline.summary.firstActionDate && (
+                      <span className="flex items-center gap-1">
+                        <span className="text-brand-400">→</span> first fix applied ({new Date(timeline.summary.firstActionDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
